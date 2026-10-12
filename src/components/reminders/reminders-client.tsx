@@ -104,7 +104,6 @@ function buildServiceLogHref(vehicleId: string, procedureIds: string[]) {
 
 export function RemindersClient() {
   const [items, setItems] = useState<Reminder[]>([]);
-  const [status, setStatus] = useState("Завантажуємо нагадування...");
   const toast = useToast();
   const groups = buildReminderGroups(items);
   const priorityGroups = selectPriorityGroups(groups);
@@ -115,12 +114,9 @@ export function RemindersClient() {
     void listReminders()
       .then((reminders) => {
         setItems(reminders);
-        setStatus(reminders.length > 0 ? "Нагадування синхронізовано." : "Активних нагадувань поки немає.");
       })
       .catch((error) => {
-        const message = getApiErrorMessage(error);
-        setStatus(message);
-        toast.error(message);
+        toast.error(getApiErrorMessage(error));
       });
   }, [toast]);
 
@@ -224,7 +220,6 @@ export function RemindersClient() {
           ))}
         </>
       )}
-      <p className="text-sm leading-6 text-[var(--muted)]">{status}</p>
     </div>
   );
 }

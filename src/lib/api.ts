@@ -1,4 +1,4 @@
-import type { AuthUser, CatalogResponse, MaintenancePlanResponse, Reminder, ServiceLog, Vehicle, VehicleCatalogResponse } from "@/lib/types";
+import type { AuthUser, CatalogResponse, MaintenancePlanResponse, MaintenanceRequestOptions, Reminder, ServiceLog, ServiceStation, Vehicle, VehicleCatalogResponse } from "@/lib/types";
 import { API_ROUTES } from "@/lib/routes";
 
 function apiBaseUrl(): string {
@@ -61,7 +61,7 @@ function isRecord(value: unknown): value is Record<string, unknown> {
 function extractErrorPayload(payload: unknown): { message: string; code?: string; details?: unknown } {
   if (isRecord(payload) && "error" in payload && isRecord(payload.error)) {
     return {
-      message: typeof payload.error.message === "string" ? payload.error.message : "Помилка запиту до API.",
+      message: typeof payload.error.message === "string" ? payload.error.message : "Не вдалося виконати дію. Спробуйте ще раз.",
       code: typeof payload.error.code === "string" ? payload.error.code : undefined,
       details: payload.error.details
     };
@@ -69,13 +69,13 @@ function extractErrorPayload(payload: unknown): { message: string; code?: string
 
   if (isRecord(payload)) {
     return {
-      message: typeof payload.message === "string" ? payload.message : "Помилка запиту до API.",
+      message: typeof payload.message === "string" ? payload.message : "Не вдалося виконати дію. Спробуйте ще раз.",
       code: typeof payload.code === "string" ? payload.code : undefined,
       details: payload.details
     };
   }
 
-  return { message: "Помилка запиту до API." };
+  return { message: "Не вдалося виконати дію. Спробуйте ще раз." };
 }
 
 async function parseResponse<T>(response: Response): Promise<T> {
@@ -108,6 +108,15 @@ export async function ensureCsrfToken(): Promise<string> {
   }
 
   return csrfTokenPromise;
+}
+
+function withStationQuery(path: string, options?: MaintenanceRequestOptions): string {
+  if (!options?.stationId) {
+    return path;
+  }
+
+  const separator = path.includes("?") ? "&" : "?";
+  return `${path}${separator}stationId=${encodeURIComponent(options.stationId)}`;
 }
 
 async function apiRequest<T>(path: string, init?: RequestInit, needsCsrf = false, csrfRetry = true): Promise<T> {
@@ -213,12 +222,33 @@ export async function loginWithGoogle(idToken: string): Promise<AuthUser> {
   return payload.user;
 }
 
+export async function updateCabinetPreferences(input: { preferredServiceStationId: string | null }): Promise<AuthUser> {
+  const payload = await apiRequest<{ user: AuthUser }>(API_ROUTES.auth.preferences, {
+    method: "PATCH",
+    body: JSON.stringify(input)
+  }, true);
+
+  rememberSessionUser(payload.user);
+  return payload.user;
+}
+
 export async function updateProfile(input: { email: string; fullName: string; avatarUrl?: string | null }): Promise<AuthUser> {
   const payload = await apiRequest<{ user: AuthUser }>(API_ROUTES.auth.profile, {
     method: "PATCH",
     body: JSON.stringify(input)
   }, true);
 
+  rememberSessionUser(payload.user);
+  return payload.user;
+}
+
+export async function uploadAvatarImage(input: { dataUrl: string }): Promise<AuthUser> {
+  const payload = await apiRequest<{ user: AuthUser; url: string }>(API_ROUTES.auth.avatarUpload, {
+    method: "POST",
+    body: JSON.stringify(input)
+  }, true);
+
+  rememberSessionUser(payload.user);
   return payload.user;
 }
 
@@ -306,6 +336,7 @@ export async function createServiceLog(vehicleId: string, input: {
   serviceDate: string;
   mileageKm: number;
   serviceStation?: string | null;
+  serviceStationId?: string | null;
   notesUk?: string | null;
   items: Array<{ procedureId: string; notesUk?: string | null }>;
 }): Promise<void> {
@@ -330,38 +361,62 @@ export async function listReminders(): Promise<Reminder[]> {
   return payload.items;
 }
 
-export async function getMaintenancePlan(vehicleId: string): Promise<MaintenancePlanResponse> {
-  return apiRequest<MaintenancePlanResponse>(API_ROUTES.vehicles.maintenancePlan(vehicleId));
+export async function listServiceStations(): Promise<ServiceStation[]> {
+  const payload = await apiRequest<{ items: ServiceStation[] }>(API_ROUTES.catalog.serviceStations);
+  return payload.items;
 }
 
-export async function requestMissingMaintenancePlan(vehicleId: string, input?: { noteUk?: string | null }): Promise<MaintenancePlanResponse> {
-  return apiRequest<MaintenancePlanResponse>(API_ROUTES.vehicles.maintenancePlanRequest(vehicleId), {
+export async function getMaintenancePlan(vehicleId: string, options?: MaintenanceRequestOptions): Promise<MaintenancePlanResponse> {
+  return apiRequest<MaintenancePlanResponse>(withStationQuery(API_ROUTES.vehicles.maintenancePlan(vehicleId), options));
+}
+
+export async function requestMissingMaintenancePlan(
+  vehicleId: string,
+  input?: { noteUk?: string | null },
+  options?: MaintenanceRequestOptions
+): Promise<MaintenancePlanResponse> {
+  return apiRequest<MaintenancePlanResponse>(withStationQuery(API_ROUTES.vehicles.maintenancePlanRequest(vehicleId), options), {
     method: "POST",
     body: JSON.stringify({ noteUk: input?.noteUk ?? null })
   }, true);
 }
 
-export async function assignMaintenanceTemplate(vehicleId: string, templateId: string): Promise<MaintenancePlanResponse> {
-  return apiRequest<MaintenancePlanResponse>(API_ROUTES.vehicles.maintenancePlanAssignTemplate(vehicleId), {
+export async function assignMaintenanceTemplate(
+  vehicleId: string,
+  templateId: string,
+  options?: MaintenanceRequestOptions
+): Promise<MaintenancePlanResponse> {
+  return apiRequest<MaintenancePlanResponse>(withStationQuery(API_ROUTES.vehicles.maintenancePlanAssignTemplate(vehicleId), options), {
     method: "POST",
     body: JSON.stringify({ templateId })
   }, true);
 }
 
-export async function updateMaintenanceItemStatus(vehicleId: string, planItemId: string, status: "pending" | "skipped"): Promise<MaintenancePlanResponse> {
-  return apiRequest<MaintenancePlanResponse>(API_ROUTES.vehicles.maintenancePlanItemStatus(vehicleId, planItemId), {
+export async function updateMaintenanceItemStatus(
+  vehicleId: string,
+  planItemId: string,
+  status: "pending" | "skipped",
+  options?: MaintenanceRequestOptions
+): Promise<MaintenancePlanResponse> {
+  return apiRequest<MaintenancePlanResponse>(withStationQuery(API_ROUTES.vehicles.maintenancePlanItemStatus(vehicleId, planItemId), options), {
     method: "PATCH",
     body: JSON.stringify({ status })
   }, true);
 }
 
-export async function completeMaintenanceItem(vehicleId: string, planItemId: string, input: {
-  serviceDate: string;
-  mileageKm: number;
-  serviceStation?: string | null;
-  notesUk?: string | null;
-}): Promise<MaintenancePlanResponse> {
-  return apiRequest<MaintenancePlanResponse>(API_ROUTES.vehicles.maintenancePlanItemComplete(vehicleId, planItemId), {
+export async function completeMaintenanceItem(
+  vehicleId: string,
+  planItemId: string,
+  input: {
+    serviceDate: string;
+    mileageKm: number;
+    serviceStation?: string | null;
+    serviceStationId?: string | null;
+    notesUk?: string | null;
+  },
+  options?: MaintenanceRequestOptions
+): Promise<MaintenancePlanResponse> {
+  return apiRequest<MaintenancePlanResponse>(withStationQuery(API_ROUTES.vehicles.maintenancePlanItemComplete(vehicleId, planItemId), options), {
     method: "POST",
     body: JSON.stringify(input)
   }, true);

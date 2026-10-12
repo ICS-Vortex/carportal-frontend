@@ -1,9 +1,11 @@
 "use client";
 
 import { useSearchParams } from "next/navigation";
-import { useEffect, useState, useTransition } from "react";
+import { useEffect, useMemo, useState, useTransition } from "react";
 
+import { useServiceStation } from "@/components/providers/service-station-provider";
 import { AppModal } from "@/components/shared/app-modal";
+import { ServiceStationSelect } from "@/components/shared/service-station-select";
 import { EmptyState } from "@/components/shared/empty-state";
 import { useToast } from "@/components/shared/toast-provider";
 import { FancyMultiSelect } from "@/components/ui/fancy-multi-select";
@@ -15,11 +17,12 @@ import type { MaintenancePlanItem, ServiceLog, Vehicle } from "@/lib/types";
 const initialForm = {
   serviceDate: new Date().toISOString().slice(0, 10),
   mileageKm: "",
-  serviceStation: "",
   notesUk: ""
 };
 
 export function ServiceLogsClient() {
+  const { stationId, stationLabel } = useServiceStation();
+  const maintenanceOptions = useMemo(() => (stationId ? { stationId } : undefined), [stationId]);
   const searchParams = useSearchParams();
   const requestedVehicleId = searchParams.get("vehicleId") ?? "";
   const requestedProcedureIds = searchParams
@@ -33,7 +36,6 @@ export function ServiceLogsClient() {
   const [selectedProcedures, setSelectedProcedures] = useState<string[]>([]);
   const [logs, setLogs] = useState<ServiceLog[]>([]);
   const [form, setForm] = useState(initialForm);
-  const [status, setStatus] = useState("Завантажуємо журнал сервісу...");
   const [isCreateModalOpen, setIsCreateModalOpen] = useState(false);
   const [logToDelete, setLogToDelete] = useState<ServiceLog | null>(null);
   const [deletingLogId, setDeletingLogId] = useState<string | null>(null);
@@ -77,7 +79,10 @@ export function ServiceLogsClient() {
       setSelectedVehicleId(nextVehicleId);
 
       if (nextVehicleId) {
-        const [logItems, plan] = await Promise.all([listServiceLogs(nextVehicleId), getMaintenancePlan(nextVehicleId)]);
+        const [logItems, plan] = await Promise.all([
+          listServiceLogs(nextVehicleId),
+          getMaintenancePlan(nextVehicleId, maintenanceOptions)
+        ]);
         setLogs(logItems);
         applyPlanItems(plan.items);
       } else {
@@ -85,11 +90,8 @@ export function ServiceLogsClient() {
         setProcedures([]);
       }
 
-      setStatus(vehicleItems.length > 0 ? "Журнал сервісу синхронізовано." : "Спершу додайте автомобіль у гараж.");
     } catch (error) {
-      const message = getApiErrorMessage(error);
-      setStatus(message);
-      toast.error(message);
+      toast.error(getApiErrorMessage(error));
     }
   }
 
@@ -102,44 +104,39 @@ export function ServiceLogsClient() {
     }
 
     try {
-      const [logItems, plan] = await Promise.all([listServiceLogs(vehicleId), getMaintenancePlan(vehicleId)]);
+      const [logItems, plan] = await Promise.all([
+        listServiceLogs(vehicleId),
+        getMaintenancePlan(vehicleId, maintenanceOptions)
+      ]);
       setLogs(logItems);
       applyPlanItems(plan.items);
     } catch (error) {
-      const message = getApiErrorMessage(error);
-      setStatus(message);
-      toast.error(message);
+      toast.error(getApiErrorMessage(error));
     }
   }
 
   useEffect(() => {
     void refreshBase();
-  }, [requestedProcedureIds.join(","), requestedVehicleId]);
+  }, [maintenanceOptions, requestedProcedureIds.join(","), requestedVehicleId]);
 
   function handleSubmit(event: React.FormEvent<HTMLFormElement>) {
     event.preventDefault();
 
     if (!selectedVehicleId) {
-      const message = "Оберіть автомобіль для запису сервісу.";
-      setStatus(message);
-      toast.error(message);
+      toast.error("Оберіть автомобіль для запису сервісу.");
       return;
     }
 
     if (selectedProcedures.length === 0) {
-      const message = "Оберіть хоча б одну процедуру.";
-      setStatus(message);
-      toast.error(message);
+      toast.error("Оберіть хоча б одну процедуру.");
       return;
     }
-
-    setStatus("Зберігаємо сервісний запис...");
 
     startCreateTransition(() => {
       void createServiceLog(selectedVehicleId, {
         serviceDate: form.serviceDate,
         mileageKm: Number(form.mileageKm),
-        serviceStation: form.serviceStation || null,
+        serviceStationId: stationId || null,
         notesUk: form.notesUk || null,
         items: selectedProcedures.map((procedureId) => ({ procedureId }))
       })
@@ -151,9 +148,7 @@ export function ServiceLogsClient() {
           toast.success("Сервісний запис додано.");
         })
         .catch((error) => {
-          const message = getApiErrorMessage(error);
-          setStatus(message);
-          toast.error(message);
+          toast.error(getApiErrorMessage(error));
         });
     });
   }
@@ -166,20 +161,15 @@ export function ServiceLogsClient() {
     const targetLog = logToDelete;
     setDeletingLogId(targetLog.id);
     setLogToDelete(null);
-    setStatus("Видаляємо сервісний запис...");
-
     startDeleteTransition(() => {
       void deleteServiceLog(selectedVehicleId, targetLog.id)
         .then(async () => {
           const deletedLogDate = new Date(targetLog.service_date).toLocaleDateString("uk-UA");
           await refreshLogs(selectedVehicleId);
-          setStatus("Журнал сервісу синхронізовано.");
           toast.success(`Сервісний запис від ${deletedLogDate} видалено.`);
         })
         .catch((error) => {
-          const message = getApiErrorMessage(error);
-          setStatus(message);
-          toast.error(message);
+          toast.error(getApiErrorMessage(error));
         })
         .finally(() => {
           setDeletingLogId(null);
@@ -194,10 +184,14 @@ export function ServiceLogsClient() {
           Ми вже підставили роботи з нагадування для цього авто. Перевірте дату, пробіг і збережіть запис сервісу.
         </div>
       ) : null}
+      {stationLabel ? (
+        <p className="rounded-[20px] border border-[var(--line)] bg-black/5 px-4 py-3 text-sm leading-6 text-[var(--muted)]">
+          СТО: <strong className="text-[var(--foreground)]">{stationLabel}</strong> (змінити можна у виборі СТО вище)
+        </p>
+      ) : null}
       {[
         ["serviceDate", "Дата сервісу", "date"],
         ["mileageKm", "Пробіг на момент сервісу", "number"],
-        ["serviceStation", "Назва СТО", "text"],
         ["notesUk", "Коментар до візиту", "text"]
       ].map(([key, label, type]) => (
         <label key={key} className="flex flex-col gap-2 text-sm text-[var(--muted)]">
@@ -240,7 +234,6 @@ export function ServiceLogsClient() {
           Скасувати
         </button>
       </div>
-      <p className="text-sm leading-6 text-[var(--muted)]">{status}</p>
     </form>
   );
 
@@ -249,24 +242,31 @@ export function ServiceLogsClient() {
       <div className="space-y-5">
         <section className="rounded-[22px] border border-[var(--line)] bg-white/4 p-4 sm:p-5">
           <div className="space-y-4">
-            <div className="min-w-[280px]">
-              {vehicles.length > 0 ? (
-                <FancySelect
-                  label="Автомобіль"
-                  value={selectedVehicleId}
-                  onChange={(value) => {
-                    setSelectedVehicleId(value);
-                    void refreshLogs(value);
-                  }}
-                  options={vehicles.map((vehicle) => ({
-                    value: vehicle.id,
-                    label: `${vehicle.make} ${vehicle.model} ${vehicle.year}`,
-                    description: `Поточний пробіг ${vehicle.mileage_km.toLocaleString("uk-UA")} км`
-                  }))}
-                  helper="Оберіть авто, щоб переглянути історію сервісу та додати новий запис."
-                  required
-                />
-              ) : null}
+            <div className="grid gap-4 md:grid-cols-2 md:items-start">
+              <ServiceStationSelect
+                searchable
+                showImage={false}
+                helper="Оберіть СТО для нових записів; пошук за назвою, містом або адресою."
+              />
+              <div className="min-w-0">
+                {vehicles.length > 0 ? (
+                  <FancySelect
+                    label="Автомобіль"
+                    value={selectedVehicleId}
+                    onChange={(value) => {
+                      setSelectedVehicleId(value);
+                      void refreshLogs(value);
+                    }}
+                    options={vehicles.map((vehicle) => ({
+                      value: vehicle.id,
+                      label: `${vehicle.make} ${vehicle.model} ${vehicle.year}`,
+                      description: `Поточний пробіг ${vehicle.mileage_km.toLocaleString("uk-UA")} км`
+                    }))}
+                    helper="Оберіть авто, щоб переглянути історію сервісу та додати новий запис."
+                    required
+                  />
+                ) : null}
+              </div>
             </div>
 
             <div className="flex justify-start">

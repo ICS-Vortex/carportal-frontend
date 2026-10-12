@@ -9,7 +9,7 @@ export const GARAGE_UI = {
     plateLabel: "Державний номер",
     mileageLabel: "Поточний пробіг",
     imageTitle: "Фото автомобіля",
-    imageDescription: "JPG, PNG або WEBP до 5 МБ. Файл зберігається локально в сервісі.",
+    imageDescription: "JPG, PNG або WEBP до 5 МБ.",
     uploadIdle: "Завантажити файл",
     uploadBusy: "Завантажуємо...",
     removeImage: "Прибрати",
@@ -18,7 +18,7 @@ export const GARAGE_UI = {
   },
   delete: {
     title: "Прибрати авто з гаражу?",
-    description: "Автомобіль буде приховано з вашого гаража, але історичні записи сервісу збережуться в системі.",
+    description: "Автомобіль зникне з гаража, але журнал сервісу за цим авто залишиться у вашому обліку.",
     action: "Прибрати з гаражу"
   }
 } as const;

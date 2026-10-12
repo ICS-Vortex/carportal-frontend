@@ -3,6 +3,20 @@ import type { NextConfig } from "next";
 const nextConfig: NextConfig = {
   poweredByHeader: false,
   allowedDevOrigins: ["carmain.local", "carmain.localhost.com", "*.localhost.com"],
+  async redirects() {
+    return [
+      {
+        source: "/profile/password",
+        destination: "/profile",
+        permanent: false
+      },
+      {
+        source: "/profile/delete",
+        destination: "/profile",
+        permanent: false
+      }
+    ];
+  },
   async headers() {
     return [
       {

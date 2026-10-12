@@ -5,10 +5,10 @@ import { usePathname, useRouter } from "next/navigation";
 import type { ReactNode } from "react";
 import { useEffect, useState } from "react";
 
-import { Bell, CarFront, Gauge, ListChecks, LogOut, Menu, UserRound, Wrench, X } from "lucide-react";
+import { Bell, CarFront, Gauge, Globe, ListChecks, LogOut, Menu, UserRound, Wrench, X } from "lucide-react";
 
 import { getApiErrorMessage, getSession, listReminders, logout } from "@/lib/api";
-import { APP_ROUTES } from "@/lib/routes";
+import { APP_ROUTES, PUBLIC_WEBSITE_URL } from "@/lib/routes";
 import type { AuthUser } from "@/lib/types";
 
 const primaryNavigation = [
@@ -35,7 +35,7 @@ function isActiveRoute(href: string, pathname: string) {
   }
 
   if (href === APP_ROUTES.profile) {
-    return pathname === APP_ROUTES.profile || pathname.startsWith(`${APP_ROUTES.profileDelete}`);
+    return pathname === APP_ROUTES.profile;
   }
 
   return pathname === href || pathname.startsWith(`${href}/`);
@@ -168,6 +168,18 @@ export function AppShell({ heading, description, children }: AppShellProps) {
         })}
       </div>
       <div className="space-y-1">
+        <p className="px-3 pb-2 text-[10px] font-semibold uppercase tracking-[0.22em] text-white/45">Сайт</p>
+        <a
+          href={PUBLIC_WEBSITE_URL || APP_ROUTES.home}
+          target="_blank"
+          rel="noopener noreferrer"
+          className="flex items-center gap-3 px-3 py-2.5 text-sm font-medium text-white/70 transition hover:bg-white/10 hover:text-white"
+        >
+          <Globe className="h-4 w-4" />
+          Відкрити сайт
+        </a>
+      </div>
+      <div className="space-y-1">
         <p className="px-3 pb-2 text-[10px] font-semibold uppercase tracking-[0.22em] text-white/45">Акаунт</p>
         {accountNavigation.map((item) => {
           const Icon = item.icon;
@@ -192,8 +204,8 @@ export function AppShell({ heading, description, children }: AppShellProps) {
   );
 
   return (
-    <div className="atelier">
-      <aside className="atelier-rail">
+    <div className="app-shell">
+      <aside className="app-shell-rail">
         <div className="flex items-center justify-between gap-3">
           <Link href={APP_ROUTES.dashboard} className="leading-none">
             <span className="display block text-3xl text-[#c51b1b]">Carmain</span>
@@ -233,7 +245,7 @@ export function AppShell({ heading, description, children }: AppShellProps) {
         </div>
       </aside>
 
-      <div className="atelier-main">
+      <div className="app-shell-main">
         <header className="mb-8 max-w-3xl">
           <p className="eyebrow">Кабінет</p>
           <h1 className="display mt-3 text-3xl text-[var(--foreground)] sm:text-5xl">{heading}</h1>

@@ -6,6 +6,7 @@ export type AuthUser = {
   avatarUrl?: string | null;
   hasPassword?: boolean;
   hasGoogleAccount?: boolean;
+  preferredServiceStationId?: string | null;
 };
 
 export type Vehicle = {
@@ -19,13 +20,23 @@ export type Vehicle = {
   engine_name: string;
   transmission_name: string;
   drivetrain_label: string | null;
+  fuel_type: string | null;
   year: number;
   vin: string | null;
   license_plate: string | null;
   image_url: string | null;
   mileage_km: number;
+  last_service_date: string | null;
+  last_service_mileage_km: number | null;
+  has_maintenance_plan: boolean;
   created_at: string;
   updated_at: string;
+};
+
+export type GarageVehicleInsight = {
+  dueCount: number;
+  upcomingCount: number;
+  nextProcedureTitle: string | null;
 };
 
 export type VehicleCatalogResponse = {
@@ -69,12 +80,23 @@ export type Procedure = {
   category: string;
 };
 
+export type ServiceStation = {
+  id: string;
+  slug: string;
+  name_uk: string;
+  city_uk: string | null;
+  address_uk: string | null;
+  image_url: string | null;
+  sort_order: number;
+};
+
 export type ServiceLog = {
   id: string;
   vehicle_id: string;
   service_date: string;
   mileage_km: number;
   service_station: string | null;
+  service_station_id?: string | null;
   notes_uk: string | null;
   items: Array<{
     procedure_id: string;
@@ -136,6 +158,8 @@ export type MaintenanceTemplateCandidate = {
   year_to: number | null;
   notes_uk: string | null;
   item_count: number;
+  station_id: string | null;
+  station_name_uk: string | null;
 };
 
 export type MaintenancePlanItem = {
@@ -188,4 +212,14 @@ export type MaintenancePlanResponse = {
     request_note: string | null;
     created_at: string;
   } | null;
+  serviceStationId: string | null;
+  activeTemplate: {
+    id: string;
+    station_id: string | null;
+    station_name_uk: string | null;
+  } | null;
+};
+
+export type MaintenanceRequestOptions = {
+  stationId?: string | null;
 };

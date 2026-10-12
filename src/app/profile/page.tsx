@@ -5,7 +5,7 @@ export default function ProfilePage() {
   return (
     <AppShell
       heading="Профіль"
-      description="Імʼя, email і спосіб входу. Це дані лише вашого кабінету."
+      description="Контакти та налаштування входу."
     >
       <ProfileDetailsClient />
     </AppShell>

@@ -27,7 +27,6 @@ export function DashboardOverview() {
   const [activeVehicle, setActiveVehicle] = useState<Vehicle | null>(null);
   const [logs, setLogs] = useState<ServiceLog[]>([]);
   const [reminders, setReminders] = useState<Reminder[]>([]);
-  const [status, setStatus] = useState("Збираємо дані кабінету...");
   const toast = useToast();
 
   useEffect(() => {
@@ -44,26 +43,19 @@ export function DashboardOverview() {
           setLogs([]);
         }
 
-        setStatus("Дані кабінету актуальні.");
       })
       .catch((error) => {
-        const message = getApiErrorMessage(error);
-        setStatus(message);
-        toast.error(message);
+        toast.error(getApiErrorMessage(error));
       });
   }, [toast]);
 
   async function selectVehicle(vehicle: Vehicle) {
     setActiveVehicle(vehicle);
-    setStatus("Оновлюємо картку авто...");
 
     try {
       setLogs(await listServiceLogs(vehicle.id));
-      setStatus("Дані кабінету актуальні.");
     } catch (error) {
-      const message = getApiErrorMessage(error);
-      setStatus(message);
-      toast.error(message);
+      toast.error(getApiErrorMessage(error));
     }
   }
 
@@ -217,8 +209,6 @@ export function DashboardOverview() {
           )}
         </article>
       </section>
-
-      <p className="text-sm text-[var(--muted)]">{status}</p>
     </div>
   );
 }

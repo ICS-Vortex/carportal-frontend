@@ -8,9 +8,10 @@ import { EmptyState } from "@/components/shared/empty-state";
 import { AppModal } from "@/components/shared/app-modal";
 import { ConfirmModal } from "@/components/shared/confirm-modal";
 import { useToast } from "@/components/shared/toast-provider";
-import { createVehicle, deleteVehicle, getApiErrorMessage, getValidationFieldErrors, getVehicleCatalog, listVehicles, updateVehicle, uploadVehicleImage } from "@/lib/api";
+import { createVehicle, deleteVehicle, getApiErrorMessage, getValidationFieldErrors, getVehicleCatalog, listReminders, listVehicles, updateVehicle, uploadVehicleImage } from "@/lib/api";
+import { buildGarageInsights } from "@/lib/garage-insights";
 import { GARAGE_UI } from "@/lib/ui-copy";
-import type { Vehicle, VehicleCatalogResponse } from "@/lib/types";
+import type { GarageVehicleInsight, Vehicle, VehicleCatalogResponse } from "@/lib/types";
 
 function buildInitialForm(catalog: VehicleCatalogResponse | null): GarageVehicleFormState {
   const brand = catalog?.brands[0];
@@ -59,12 +60,13 @@ function clampYear(year: string, min: number, max: number): string {
 
 export function GarageClient() {
   const [vehicles, setVehicles] = useState<Vehicle[]>([]);
+  const [garageInsights, setGarageInsights] = useState<Map<string, GarageVehicleInsight>>(() => new Map());
   const [catalog, setCatalog] = useState<VehicleCatalogResponse | null>(null);
   const [form, setForm] = useState<GarageVehicleFormState>(buildInitialForm(null));
   const [editingVehicleId, setEditingVehicleId] = useState<string | null>(null);
   const [modalOpen, setModalOpen] = useState(false);
   const [deleteCandidate, setDeleteCandidate] = useState<Vehicle | null>(null);
-  const [status, setStatus] = useState("Завантажуємо гараж...");
+  const [loading, setLoading] = useState(true);
   const [isUploadingImage, setIsUploadingImage] = useState(false);
   const [isPending, startTransition] = useTransition();
   const [fieldErrors, setFieldErrors] = useState<Partial<Record<keyof GarageVehicleFormState, string>>>({});
@@ -79,15 +81,19 @@ export function GarageClient() {
 
   async function refresh() {
     try {
-      const [items, nextCatalog] = await Promise.all([listVehicles(), getVehicleCatalog()]);
+      const [items, nextCatalog, reminders] = await Promise.all([
+        listVehicles(),
+        getVehicleCatalog(),
+        listReminders().catch(() => [])
+      ]);
       setVehicles(items);
       setCatalog(nextCatalog);
+      setGarageInsights(buildGarageInsights(reminders));
       setForm((current) => current.configurationId ? current : buildInitialForm(nextCatalog));
-      setStatus(items.length > 0 ? "Гараж оновлено." : "Автомобілів поки немає.");
     } catch (error) {
-      const message = getApiErrorMessage(error);
-      setStatus(message);
-      toast.error(message);
+      toast.error(getApiErrorMessage(error));
+    } finally {
+      setLoading(false);
     }
   }
 
@@ -97,8 +103,6 @@ export function GarageClient() {
 
   function handleSubmit(event: React.FormEvent<HTMLFormElement>) {
     event.preventDefault();
-    setStatus(editingVehicleId ? "Оновлюємо автомобіль..." : "Зберігаємо автомобіль...");
-
     startTransition(() => {
       setFieldErrors({});
       const payload = {
@@ -121,14 +125,11 @@ export function GarageClient() {
 
           if (Object.keys(nextFieldErrors).length > 0) {
             setFieldErrors(nextFieldErrors as Partial<Record<keyof GarageVehicleFormState, string>>);
-            setStatus("Перевірте поля форми.");
             toast.error("Перевірте поля форми.");
             return;
           }
 
-          const message = getApiErrorMessage(error);
-          setStatus(message);
-          toast.error(message);
+          toast.error(getApiErrorMessage(error));
         });
     });
   }
@@ -137,9 +138,7 @@ export function GarageClient() {
     const selection = findCatalogSelection(catalog, vehicle.configuration_id);
 
     if (!selection) {
-      const message = "Не вдалося знайти це авто в поточному довіднику.";
-      setStatus(message);
-      toast.error(message);
+      toast.error("Не вдалося знайти це авто в поточному довіднику.");
       return;
     }
 
@@ -156,7 +155,6 @@ export function GarageClient() {
       mileageKm: String(vehicle.mileage_km)
     });
     setModalOpen(true);
-    setStatus("Редагуємо картку автомобіля.");
   }
 
   function openCreateModal() {
@@ -230,7 +228,6 @@ export function GarageClient() {
       return;
     }
 
-    setStatus("Прибираємо автомобіль з гаража...");
     startTransition(() => {
       void deleteVehicle(deleteCandidate.id)
         .then(async () => {
@@ -242,9 +239,7 @@ export function GarageClient() {
           toast.success("Автомобіль прибрано з гаража.");
         })
         .catch((error) => {
-          const message = getApiErrorMessage(error);
-          setStatus(message);
-          toast.error(message);
+          toast.error(getApiErrorMessage(error));
           setDeleteCandidate(null);
         });
     });
@@ -259,37 +254,28 @@ export function GarageClient() {
     }
 
     if (!["image/jpeg", "image/png", "image/webp"].includes(file.type)) {
-      const message = "Підтримуються лише JPG, PNG та WEBP.";
-      setStatus(message);
-      toast.error(message);
+      toast.error("Підтримуються лише JPG, PNG та WEBP.");
       return;
     }
 
     const reader = new FileReader();
     setIsUploadingImage(true);
-    setStatus("Завантажуємо зображення автомобіля...");
-
     reader.onload = () => {
       const result = reader.result;
 
       if (typeof result !== "string") {
         setIsUploadingImage(false);
-        const message = "Не вдалося прочитати файл.";
-        setStatus(message);
-        toast.error(message);
+        toast.error("Не вдалося прочитати файл.");
         return;
       }
 
       void uploadVehicleImage({ dataUrl: result })
         .then((payload) => {
           setForm((current) => ({ ...current, imageUrl: payload.url }));
-          setStatus("Зображення завантажено.");
           toast.success("Зображення автомобіля завантажено.");
         })
         .catch((error) => {
-          const message = getApiErrorMessage(error);
-          setStatus(message);
-          toast.error(message);
+          toast.error(getApiErrorMessage(error));
         })
         .finally(() => {
           setIsUploadingImage(false);
@@ -298,9 +284,7 @@ export function GarageClient() {
 
     reader.onerror = () => {
       setIsUploadingImage(false);
-      const message = "Не вдалося прочитати файл.";
-      setStatus(message);
-      toast.error(message);
+      toast.error("Не вдалося прочитати файл.");
     };
 
     reader.readAsDataURL(file);
@@ -319,10 +303,22 @@ export function GarageClient() {
       </div>
 
       <section className="space-y-4">
-        {vehicles.length === 0 ? (
+        {loading ? (
+          <div className="rounded-[24px] border border-[var(--line)] bg-white/4 p-8 text-sm text-[var(--muted)]">
+            Завантажуємо гараж...
+          </div>
+        ) : vehicles.length === 0 ? (
           <EmptyState title="Гараж порожній" description="Після першого збереження тут зʼявиться активний автомобіль та коротка картка з VIN і пробігом." />
         ) : (
-          vehicles.map((vehicle) => <GarageVehicleCard key={vehicle.id} vehicle={vehicle} onEdit={startEditing} onDelete={requestDelete} />)
+          vehicles.map((vehicle) => (
+            <GarageVehicleCard
+              key={vehicle.id}
+              vehicle={vehicle}
+              insight={garageInsights.get(vehicle.id)}
+              onEdit={startEditing}
+              onDelete={requestDelete}
+            />
+          ))
         )}
       </section>
 
@@ -364,8 +360,6 @@ export function GarageClient() {
         onClose={() => setDeleteCandidate(null)}
         onConfirm={confirmDelete}
       />
-
-      <p className="text-sm leading-6 text-[var(--muted)]">{status}</p>
     </div>
   );
 }

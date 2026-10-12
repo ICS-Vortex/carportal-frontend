@@ -9,6 +9,7 @@ type FancySelectOption = {
   value: string;
   label: string;
   description?: string | null;
+  imageUrl?: string | null;
 };
 
 type FancySelectProps = {
@@ -67,6 +68,11 @@ export function FancySelect({ label, value, onChange, options, helper, accent = 
                   value={item.value}
                   className={`relative flex cursor-pointer select-none items-start gap-3 rounded-[16px] px-3 py-3 pr-9 text-sm text-[var(--muted)] outline-none transition ${itemAccentClass}`}
                 >
+                  {item.imageUrl ? (
+                    <span className="mt-0.5 h-11 w-11 shrink-0 overflow-hidden rounded-lg border border-[var(--line)] bg-black/5">
+                      <img src={item.imageUrl} alt="" className="h-full w-full object-cover" />
+                    </span>
+                  ) : null}
                   <Select.ItemText>
                     <span className="block font-medium text-[var(--foreground)]">{item.label}</span>
                     {item.description ? <span className="mt-1 block text-xs leading-5 text-[var(--muted)]">{item.description}</span> : null}

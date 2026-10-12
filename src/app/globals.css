@@ -96,7 +96,9 @@ textarea {
   border-radius: 0;
   border: 1px solid #d5d5d5;
   background: #fff;
-  padding: 0.8rem 1rem;
+  padding: 0.55rem 0.75rem;
+  font-size: 0.875rem;
+  line-height: 1.35;
   color: var(--foreground);
   outline: none;
   transition: border-color 160ms ease, background 160ms ease;
@@ -188,6 +190,26 @@ textarea {
   font-size: 0.75rem;
 }
 
+.btn-primary.btn-sentence,
+.btn-ghost.btn-sentence,
+.btn-danger.btn-sentence {
+  letter-spacing: 0.02em;
+  text-transform: none;
+}
+
+.form-stack {
+  display: grid;
+  gap: 0.85rem;
+}
+
+.form-label {
+  display: flex;
+  flex-direction: column;
+  gap: 0.35rem;
+  font-size: 0.8125rem;
+  color: var(--muted);
+}
+
 .panel-glow {
   position: relative;
 }
@@ -203,13 +225,13 @@ textarea {
   filter: blur(18px);
 }
 
-.atelier {
+.app-shell {
   display: grid;
   min-height: 100vh;
   grid-template-columns: 272px minmax(0, 1fr);
 }
 
-.atelier-rail {
+.app-shell-rail {
   position: sticky;
   top: 0;
   display: flex;
@@ -222,7 +244,7 @@ textarea {
   padding: 1.4rem 1rem 1.2rem;
 }
 
-.atelier-main {
+.app-shell-main {
   min-width: 0;
   padding: 1.6rem 1.25rem 3rem;
 }
@@ -266,7 +288,7 @@ textarea {
 }
 
 @media (max-width: 1023px) {
-  .atelier {
+  .app-shell {
     grid-template-columns: 1fr;
   }
 
@@ -282,7 +304,7 @@ textarea {
     display: flex;
   }
 
-  .atelier-rail {
+  .app-shell-rail {
     position: sticky;
     top: 0;
     z-index: 40;
@@ -292,7 +314,7 @@ textarea {
     background: #111111;
   }
 
-  .atelier-main {
+  .app-shell-main {
     padding: 1.25rem 1rem 2.5rem;
   }
 
