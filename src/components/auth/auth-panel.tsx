@@ -34,13 +34,12 @@ export function AuthPanel({ nextHref = APP_ROUTES.dashboard }: AuthPanelProps) {
   }
 
   useEffect(() => {
-    void refreshSession()
-      .catch((error) => {
-        const message = getApiErrorMessage(error);
-        setStatus(message);
-        toast.error(message);
-      });
-  }, [toast]);
+    void refreshSession().catch((error) => {
+      const message = getApiErrorMessage(error);
+      setStatus(message);
+      toast.error(message);
+    });
+  }, []);
 
   function handleSubmit(event: React.FormEvent<HTMLFormElement>) {
     event.preventDefault();
@@ -52,11 +51,13 @@ export function AuthPanel({ nextHref = APP_ROUTES.dashboard }: AuthPanelProps) {
         : loginWithEmail({ email, password });
 
       void action
-        .then(async () => {
-          await refreshSession(mode === "register" ? "Реєстрацію завершено." : "Вхід виконано.");
+        .then(async (user) => {
+          setSession(user);
           setPassword("");
+          setStatus(mode === "register" ? "Реєстрацію завершено." : "Вхід виконано.");
           toast.success(mode === "register" ? "Акаунт створено." : "Вхід виконано.");
           router.replace(nextHref);
+          router.refresh();
         })
         .catch((error) => {
           const message = getApiErrorMessage(error);
@@ -96,10 +97,7 @@ export function AuthPanel({ nextHref = APP_ROUTES.dashboard }: AuthPanelProps) {
             key={value}
             type="button"
             onClick={() => setMode(value as Mode)}
-            className={mode === value
-              ? "rounded-full bg-[linear-gradient(135deg,#4f84ff,#4ccfff)] px-4 py-2 text-sm font-semibold text-slate-950"
-              : "rounded-full border border-white/10 px-4 py-2 text-sm font-semibold text-white"
-            }
+            className={mode === value ? "btn-primary" : "btn-ghost"}
           >
             {label}
           </button>
@@ -107,44 +105,52 @@ export function AuthPanel({ nextHref = APP_ROUTES.dashboard }: AuthPanelProps) {
       </div>
 
       {session ? (
-        <div className="rounded-[22px] border border-[rgba(76,207,255,0.2)] bg-[rgba(76,207,255,0.08)] p-4 text-sm text-[var(--muted)]">
-          Активна сесія для <span className="font-semibold text-white">{session.email}</span>{" "}
-          <span className="text-[var(--accent-cyan)]">· {session.role === "admin" ? "адміністратор" : "водій"}</span>
+        <div className="rounded-[22px] border border-[var(--line)] bg-[rgba(197,27,27,0.06)] p-4 text-sm text-[var(--muted)]">
+          Сесія відкрита для <span className="font-semibold text-[var(--foreground)]">{session.fullName}</span>
+          <span className="mt-1 block text-xs">{session.email}</span>
         </div>
       ) : null}
 
       <form className="grid gap-4" onSubmit={handleSubmit}>
         {mode === "register" ? (
-          <label className="flex flex-col gap-2 text-sm text-[var(--muted)]">
+          <label htmlFor="full-name" className="flex flex-col gap-2 text-sm text-[var(--muted)]">
             Імʼя та прізвище
             <input
+              id="full-name"
+              name="fullName"
               value={fullName}
               onChange={(event) => setFullName(event.target.value)}
-              className="rounded-2xl border border-white/10 bg-white/5 px-4 py-3 text-white outline-none transition focus:border-[var(--accent-cyan)]"
+              className="field"
               placeholder="Імʼя та прізвище"
               required
             />
           </label>
         ) : null}
-        <label className="flex flex-col gap-2 text-sm text-[var(--muted)]">
+        <label htmlFor="email" className="flex flex-col gap-2 text-sm text-[var(--muted)]">
           Email
           <input
+            id="email"
+            name="email"
             value={email}
             onChange={(event) => setEmail(event.target.value)}
-            className="rounded-2xl border border-white/10 bg-white/5 px-4 py-3 text-white outline-none transition focus:border-[var(--accent-cyan)]"
+            className="field"
             placeholder="name@example.com"
             type="email"
+            autoComplete="email"
             required
           />
         </label>
-        <label className="flex flex-col gap-2 text-sm text-[var(--muted)]">
+        <label htmlFor="password" className="flex flex-col gap-2 text-sm text-[var(--muted)]">
           Пароль
           <input
+            id="password"
+            name="password"
             value={password}
             onChange={(event) => setPassword(event.target.value)}
-            className="rounded-2xl border border-white/10 bg-white/5 px-4 py-3 text-white outline-none transition focus:border-[var(--accent-cyan)]"
+            className="field"
             placeholder="Не менше 8 символів"
             type="password"
+            autoComplete={mode === "register" ? "new-password" : "current-password"}
             minLength={8}
             required
           />
@@ -152,7 +158,7 @@ export function AuthPanel({ nextHref = APP_ROUTES.dashboard }: AuthPanelProps) {
         <div className="flex flex-wrap gap-3">
           <button
             disabled={isPending}
-            className="rounded-full bg-[linear-gradient(135deg,#4f84ff,#4ccfff)] px-5 py-3 text-sm font-semibold text-slate-950 disabled:opacity-60"
+            className="btn-primary"
           >
             {mode === "register" ? "Створити акаунт" : "Увійти"}
           </button>
@@ -160,18 +166,28 @@ export function AuthPanel({ nextHref = APP_ROUTES.dashboard }: AuthPanelProps) {
             onSuccess={async () => {
               await refreshSession("Вхід через Google виконано.");
               router.replace(nextHref);
+              router.refresh();
             }}
             onStatus={setStatus}
           />
           {session ? (
-            <button
-              type="button"
-              onClick={handleLogout}
-              disabled={isPending}
-              className="rounded-full border border-white/10 px-5 py-3 text-sm font-semibold text-white disabled:opacity-60"
-            >
-              Вийти
-            </button>
+            <>
+              <button
+                type="button"
+                onClick={() => router.replace(nextHref)}
+                className="btn-primary"
+              >
+                Перейти в кабінет
+              </button>
+              <button
+                type="button"
+                onClick={handleLogout}
+                disabled={isPending}
+                className="btn-ghost"
+              >
+                Вийти
+              </button>
+            </>
           ) : null}
         </div>
       </form>

@@ -8,7 +8,7 @@ import { EmptyState } from "@/components/shared/empty-state";
 import { AppModal } from "@/components/shared/app-modal";
 import { ConfirmModal } from "@/components/shared/confirm-modal";
 import { useToast } from "@/components/shared/toast-provider";
-import { createVehicle, deleteVehicle, getApiErrorMessage, getVehicleCatalog, listVehicles, updateVehicle, uploadVehicleImage } from "@/lib/api";
+import { createVehicle, deleteVehicle, getApiErrorMessage, getValidationFieldErrors, getVehicleCatalog, listVehicles, updateVehicle, uploadVehicleImage } from "@/lib/api";
 import { GARAGE_UI } from "@/lib/ui-copy";
 import type { Vehicle, VehicleCatalogResponse } from "@/lib/types";
 
@@ -67,11 +67,13 @@ export function GarageClient() {
   const [status, setStatus] = useState("Завантажуємо гараж...");
   const [isUploadingImage, setIsUploadingImage] = useState(false);
   const [isPending, startTransition] = useTransition();
+  const [fieldErrors, setFieldErrors] = useState<Partial<Record<keyof GarageVehicleFormState, string>>>({});
   const toast = useToast();
 
   function resetForm() {
     setForm(buildInitialForm(catalog));
     setEditingVehicleId(null);
+    setFieldErrors({});
     setModalOpen(false);
   }
 
@@ -98,6 +100,7 @@ export function GarageClient() {
     setStatus(editingVehicleId ? "Оновлюємо автомобіль..." : "Зберігаємо автомобіль...");
 
     startTransition(() => {
+      setFieldErrors({});
       const payload = {
         configurationId: form.configurationId,
         year: Number(form.year),
@@ -114,6 +117,15 @@ export function GarageClient() {
           toast.success(editingVehicleId ? "Картку автомобіля оновлено." : "Автомобіль додано до гаража.");
         })
         .catch((error) => {
+          const nextFieldErrors = getValidationFieldErrors(error);
+
+          if (Object.keys(nextFieldErrors).length > 0) {
+            setFieldErrors(nextFieldErrors as Partial<Record<keyof GarageVehicleFormState, string>>);
+            setStatus("Перевірте поля форми.");
+            toast.error("Перевірте поля форми.");
+            return;
+          }
+
           const message = getApiErrorMessage(error);
           setStatus(message);
           toast.error(message);
@@ -155,6 +167,7 @@ export function GarageClient() {
 
   function updateFormValue(key: keyof GarageVehicleFormState, value: string) {
     setForm((current) => ({ ...current, [key]: value }));
+    setFieldErrors((current) => ({ ...current, [key]: undefined }));
   }
 
   function handleBrandChange(brandId: string) {
@@ -295,12 +308,12 @@ export function GarageClient() {
 
   return (
     <div className="space-y-6">
-      <div className="flex flex-col gap-4 rounded-[24px] border border-white/8 bg-white/4 p-5 sm:flex-row sm:items-center sm:justify-between">
+      <div className="flex flex-col gap-4 rounded-[24px] border border-[var(--line)] bg-white/4 p-5 sm:flex-row sm:items-center sm:justify-between">
         <div>
-          <h3 className="text-xl font-semibold text-white">Автомобілі у вашому гаражі</h3>
+          <h3 className="text-xl font-semibold text-[var(--foreground)]">Автомобілі у вашому гаражі</h3>
           <p className="mt-1 text-sm text-[var(--muted)]">Авто додається з підготовленого довідника, а ваша картка зберігає тільки персональні дані про конкретну машину.</p>
         </div>
-        <button type="button" onClick={openCreateModal} disabled={!catalog?.brands.length} className="rounded-full bg-[linear-gradient(135deg,#4f84ff,#4ccfff)] px-5 py-3 text-sm font-semibold text-slate-950 transition hover:brightness-110 disabled:opacity-60">
+        <button type="button" onClick={openCreateModal} disabled={!catalog?.brands.length} className="btn-primary">
           Новий автомобіль
         </button>
       </div>
@@ -324,6 +337,7 @@ export function GarageClient() {
           <GarageVehicleForm
             catalog={catalog}
             form={form}
+            fieldErrors={fieldErrors}
             isPending={isPending}
             isUploadingImage={isUploadingImage}
             editing={Boolean(editingVehicleId)}

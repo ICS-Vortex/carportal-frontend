@@ -1,6 +1,7 @@
-import { AppShell } from "@/components/shell/app-shell";
+import Link from "next/link";
+
 import { AuthPanel } from "@/components/auth/auth-panel";
-import { SectionCard } from "@/components/ui/section-card";
+import { PublicHeader } from "@/components/public/public-header";
 import { APP_ROUTES } from "@/lib/routes";
 
 type AuthPageProps = {
@@ -12,31 +13,21 @@ export default async function AuthPage({ searchParams }: AuthPageProps) {
   const nextHref = params?.next || APP_ROUTES.dashboard;
 
   return (
-    <AppShell
-      activeHref={APP_ROUTES.auth}
-      access="public"
-      heading="Авторизація"
-      description="Два сценарії входу: Google Sign-In або класичний email/пароль із захищеною сесією."
-    >
-      <div className="flex min-h-[calc(100vh-7rem)] items-center justify-center">
-        <div className="w-full max-w-xl space-y-6">
-          <SectionCard eyebrow="Доступ" title="Вхід до кабінету" className="mx-auto">
-            <AuthPanel nextHref={nextHref} />
-          </SectionCard>
-
-          <div className="grid gap-3 sm:grid-cols-3">
-            {[
-              "Особистий гараж, історія сервісу та фактичний пробіг.",
-              "План обслуговування і нагадування без зайвих демонстраційних блоків.",
-              "Окремі інструменти керування для адміністратора, якщо роль це дозволяє."
-            ].map((item) => (
-              <div key={item} className="rounded-[22px] border border-white/8 bg-white/4 p-4 text-sm leading-6 text-[var(--muted)]">
-                {item}
-              </div>
-            ))}
-          </div>
+    <div className="shop-site min-h-screen bg-white">
+      <PublicHeader />
+      <main className="mx-auto flex w-full max-w-lg flex-col px-4 py-12 sm:px-6 sm:py-16">
+        <Link href={APP_ROUTES.home} className="text-sm font-semibold text-[var(--shop-muted)] transition hover:text-[var(--shop-ink)]">
+          На головну
+        </Link>
+        <p className="shop-kicker mt-8">Кабінет</p>
+        <h1 className="display mt-3 text-4xl text-[var(--shop-ink)]">Вхід</h1>
+        <p className="mt-3 text-sm leading-6 text-[var(--shop-muted)]">
+          Email або Google. Після входу відкриється огляд, гараж, регламент і журнал.
+        </p>
+        <div className="mt-8 border border-[#e4e4e4] bg-white p-5 sm:p-6">
+          <AuthPanel nextHref={nextHref} />
         </div>
-      </div>
-    </AppShell>
+      </main>
+    </div>
   );
 }

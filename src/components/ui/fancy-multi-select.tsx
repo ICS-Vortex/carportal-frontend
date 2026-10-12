@@ -4,6 +4,8 @@ import { useEffect, useMemo, useRef, useState } from "react";
 
 import { Check, ChevronDown, X } from "lucide-react";
 
+import { formatUah } from "@/lib/format-money";
+
 type FancyMultiSelectOption = {
   value: string;
   label: string;
@@ -18,6 +20,7 @@ type FancyMultiSelectProps = {
   helper?: string;
   placeholder?: string;
   emptyMessage?: string;
+  selectionTotalUah?: number | null;
 };
 
 function summarizeSelection(selected: FancyMultiSelectOption[], placeholder: string) {
@@ -43,7 +46,8 @@ export function FancyMultiSelect({
   options,
   helper,
   placeholder = "Оберіть значення",
-  emptyMessage = "Немає доступних варіантів."
+  emptyMessage = "Немає доступних варіантів.",
+  selectionTotalUah = null
 }: FancyMultiSelectProps) {
   const [open, setOpen] = useState(false);
   const rootRef = useRef<HTMLDivElement | null>(null);
@@ -89,26 +93,26 @@ export function FancyMultiSelect({
       <button
         type="button"
         onClick={() => setOpen((current) => !current)}
-        className={`group relative w-full overflow-hidden rounded-[24px] border border-white/10 bg-[linear-gradient(180deg,rgba(255,255,255,0.08),rgba(255,255,255,0.035))] text-left shadow-[0_18px_48px_rgba(0,0,0,0.18)] transition outline-none ${open ? "border-[rgba(76,207,255,0.58)] shadow-[0_0_0_1px_rgba(76,207,255,0.24)]" : ""}`}
+        className={`group relative w-full overflow-hidden border border-[#d5d5d5] bg-white text-left transition outline-none ${open ? "border-[#c51b1b] shadow-[0_0_0_1px_rgba(197,27,27,0.24)]" : ""}`}
         aria-expanded={open}
       >
-        <div className="pointer-events-none absolute inset-0 bg-[radial-gradient(circle_at_top_right,rgba(76,207,255,0.16),transparent_34%),linear-gradient(135deg,rgba(255,255,255,0.05),transparent_60%)] opacity-90" />
+        <div className="pointer-events-none absolute inset-0" />
         <div className="pointer-events-none absolute inset-y-0 right-0 w-14 bg-[linear-gradient(90deg,transparent,rgba(255,255,255,0.05))]" />
         <div className="relative z-10 px-4 pb-3 pt-4 pr-12">
-          <p className="text-base font-medium text-white">{selectionText}</p>
+          <p className="text-base font-medium text-[var(--foreground)]">{selectionText}</p>
         </div>
-        <div className="absolute right-4 top-4 z-10 text-[var(--muted)] transition group-hover:text-white group-aria-expanded:translate-y-0.5 group-aria-expanded:text-white">
+        <div className="absolute right-4 top-4 z-10 text-[var(--muted)] transition group-hover:text-[var(--foreground)] group-aria-expanded:translate-y-0.5 group-aria-expanded:text-[var(--foreground)]">
           <ChevronDown className="h-5 w-5" />
         </div>
         {helperText ? (
-          <div className="relative z-10 border-t border-white/8 bg-black/10 px-4 pb-3 pt-2 text-xs leading-5 text-[var(--muted)]">
+          <div className="relative z-10 border-t border-[var(--line)] bg-black/10 px-4 pb-3 pt-2 text-xs leading-5 text-[var(--muted)]">
             {helperText}
           </div>
         ) : null}
       </button>
 
       {open ? (
-        <div className="absolute left-0 right-0 top-[calc(100%+10px)] z-[170] overflow-hidden rounded-[22px] border border-white/10 bg-[rgba(8,20,38,0.96)] shadow-[0_28px_100px_rgba(0,0,0,0.42)] backdrop-blur-xl">
+        <div className="absolute left-0 right-0 top-[calc(100%+10px)] z-[170] overflow-hidden border border-[#e4e4e4] bg-white shadow-[0_18px_50px_rgba(0,0,0,0.12)]">
           <div className="max-h-80 space-y-1 overflow-y-auto p-2">
             {options.length === 0 ? (
               <div className="rounded-[16px] px-3 py-3 text-sm text-[var(--muted)]">{emptyMessage}</div>
@@ -121,9 +125,9 @@ export function FancyMultiSelect({
                     key={option.value}
                     type="button"
                     onClick={() => toggleValue(option.value)}
-                    className={`flex w-full items-start gap-3 rounded-[16px] px-3 py-3 text-left text-sm transition ${active ? "bg-[rgba(76,207,255,0.18)] text-white" : "text-[var(--muted)] hover:bg-[rgba(255,255,255,0.05)] hover:text-white"}`}
+                    className={`flex w-full items-start gap-3 px-3 py-3 text-left text-sm transition ${active ? "bg-[rgba(197,27,27,0.08)] text-[var(--foreground)]" : "text-[var(--muted)] hover:bg-[#f6f6f6] hover:text-[var(--foreground)]"}`}
                   >
-                    <span className={`mt-0.5 flex h-5 w-5 shrink-0 items-center justify-center rounded-full border ${active ? "border-[rgba(76,207,255,0.45)] bg-[rgba(76,207,255,0.16)] text-[var(--accent-cyan)]" : "border-white/10 bg-white/5 text-transparent"}`}>
+                      <span className={`mt-0.5 flex h-5 w-5 shrink-0 items-center justify-center border ${active ? "border-[#c51b1b] bg-[rgba(197,27,27,0.08)] text-[#c51b1b]" : "border-[#d5d5d5] bg-white text-transparent"}`}>
                       <Check className="h-3.5 w-3.5" />
                     </span>
                     <span className="min-w-0 flex-1">
@@ -135,16 +139,27 @@ export function FancyMultiSelect({
               })
             )}
           </div>
-          <div className="flex items-center justify-between border-t border-white/8 bg-black/15 px-4 py-3">
+          <div className="flex items-center justify-between border-t border-[var(--line)] bg-black/15 px-4 py-3">
             <p className="text-xs leading-5 text-[var(--muted)]">
-              {selectedOptions.length > 0 ? `Обрано ${selectedOptions.length} пунктів.` : "Ще нічого не обрано."}
+              {selectedOptions.length > 0 ? (
+                <>
+                  Обрано {selectedOptions.length} пунктів.
+                  {selectionTotalUah !== null && selectionTotalUah > 0 ? (
+                    <span className="mt-1 block font-semibold text-[var(--foreground)]">
+                      Орієнтовно: {formatUah(selectionTotalUah)}
+                    </span>
+                  ) : null}
+                </>
+              ) : (
+                "Ще нічого не обрано."
+              )}
             </p>
             <div className="flex gap-2">
               {values.length > 0 ? (
                 <button
                   type="button"
                   onClick={() => onChange([])}
-                  className="inline-flex items-center gap-1 rounded-full border border-white/10 px-3 py-1.5 text-xs font-semibold text-[var(--muted)] transition hover:border-white/20 hover:text-white"
+                  className="inline-flex items-center gap-1 rounded-full border border-[var(--line)] px-3 py-1.5 text-xs font-semibold text-[var(--muted)] transition hover:border-[#c51b1b] hover:text-[var(--foreground)]"
                 >
                   <X className="h-3.5 w-3.5" />
                   Очистити
@@ -153,7 +168,7 @@ export function FancyMultiSelect({
               <button
                 type="button"
                 onClick={() => setOpen(false)}
-                className="rounded-full bg-[linear-gradient(135deg,#4f84ff,#4ccfff)] px-3 py-1.5 text-xs font-semibold text-slate-950"
+                className="bg-[#c51b1b] px-3 py-1.5 text-xs font-semibold tracking-[0.06em] text-white uppercase"
               >
                 Готово
               </button>

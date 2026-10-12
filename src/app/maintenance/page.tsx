@@ -1,19 +1,13 @@
-import { AppShell } from "@/components/shell/app-shell";
 import { MaintenanceCatalogClient } from "@/components/maintenance/maintenance-catalog-client";
-import { SectionCard } from "@/components/ui/section-card";
-import { APP_ROUTES } from "@/lib/routes";
+import { AppShell } from "@/components/shell/app-shell";
 
 export default function MaintenancePage() {
   return (
     <AppShell
-      activeHref={APP_ROUTES.maintenance}
-      access="auth"
-      heading="Регламент ТО"
-      description="Тут зібрано всі роботи для вашого авто: що вже виконано, що наближається і що потрібно відмітити після сервісу."
+      heading="Регламент"
+      description="Роботи по обраному авто: що вже зроблено, що наближається і що час відмітити."
     >
-      <SectionCard eyebrow="Обслуговування авто" title="Усі роботи по автомобілю">
-        <MaintenanceCatalogClient />
-      </SectionCard>
+      <MaintenanceCatalogClient />
     </AppShell>
   );
 }

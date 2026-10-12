@@ -31,7 +31,7 @@ export function ConfirmModal({
         <button
           type="button"
           onClick={onClose}
-          className="rounded-full border border-white/10 px-4 py-2 text-sm font-semibold text-[var(--muted)] transition hover:border-white/20 hover:text-white"
+          className="btn-ghost"
         >
           {cancelLabel}
         </button>
@@ -39,10 +39,7 @@ export function ConfirmModal({
           type="button"
           disabled={busy}
           onClick={onConfirm}
-          className={tone === "danger"
-            ? "rounded-full border border-[rgba(255,95,87,0.35)] bg-[rgba(120,24,24,0.45)] px-4 py-2 text-sm font-semibold text-[rgba(255,221,217,1)] disabled:opacity-60"
-            : "rounded-full bg-[linear-gradient(135deg,#4f84ff,#4ccfff)] px-4 py-2 text-sm font-semibold text-slate-950 disabled:opacity-60"
-          }
+          className={tone === "danger" ? "btn-danger" : "btn-primary"}
         >
           {confirmLabel}
         </button>

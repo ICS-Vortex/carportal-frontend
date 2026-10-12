@@ -1,19 +1,13 @@
-import { AppShell } from "@/components/shell/app-shell";
 import { RemindersClient } from "@/components/reminders/reminders-client";
-import { SectionCard } from "@/components/ui/section-card";
-import { APP_ROUTES } from "@/lib/routes";
+import { AppShell } from "@/components/shell/app-shell";
 
 export default function RemindersPage() {
   return (
     <AppShell
-      activeHref={APP_ROUTES.reminders}
-      access="auth"
       heading="Нагадування"
-      description="Тут видно, що потрібно зробити найближчим часом і які роботи вже не варто відкладати."
+      description="Що вже потребує уваги і до яких робіт варто підготуватися заздалегідь."
     >
-      <SectionCard eyebrow="Увага до авто" title="Що наближається або вже прострочено">
-        <RemindersClient />
-      </SectionCard>
+      <RemindersClient />
     </AppShell>
   );
 }

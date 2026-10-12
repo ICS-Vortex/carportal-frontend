@@ -78,7 +78,7 @@ export function PasswordChangeClient() {
             <input
               value={form.currentPassword}
               onChange={(event) => updateField("currentPassword", event.target.value)}
-              className="rounded-2xl border border-white/10 bg-white/5 px-4 py-3 text-white outline-none transition focus:border-[var(--accent-cyan)]"
+              className="field"
               type="password"
               minLength={8}
               required
@@ -90,7 +90,7 @@ export function PasswordChangeClient() {
           <input
             value={form.newPassword}
             onChange={(event) => updateField("newPassword", event.target.value)}
-            className="rounded-2xl border border-white/10 bg-white/5 px-4 py-3 text-white outline-none transition focus:border-[var(--accent-cyan)]"
+            className="field"
             type="password"
             minLength={8}
             required
@@ -101,7 +101,7 @@ export function PasswordChangeClient() {
           <input
             value={form.confirmPassword}
             onChange={(event) => updateField("confirmPassword", event.target.value)}
-            className="rounded-2xl border border-white/10 bg-white/5 px-4 py-3 text-white outline-none transition focus:border-[var(--accent-cyan)]"
+            className="field"
             type="password"
             minLength={8}
             required
@@ -109,14 +109,14 @@ export function PasswordChangeClient() {
         </label>
         <button
           disabled={isPending}
-          className="w-fit rounded-full bg-[linear-gradient(135deg,#4f84ff,#4ccfff)] px-5 py-3 text-sm font-semibold text-slate-950 disabled:opacity-60"
+          className="btn-primary w-fit"
         >
           {session?.hasPassword ? "Змінити пароль" : "Створити пароль"}
         </button>
       </form>
 
       <div className="space-y-4">
-        <div className="rounded-[22px] border border-white/8 bg-white/4 p-5 text-sm leading-6 text-[var(--muted)]">
+        <div className="rounded-[22px] border border-[var(--line)] bg-white/4 p-5 text-sm leading-6 text-[var(--muted)]">
           {session?.hasPassword
             ? "Для безпеки підтвердіть поточний пароль, а потім задайте новий."
             : "Акаунт, створений через Google, може окремо отримати пароль для альтернативного входу по email."}
@@ -126,7 +126,7 @@ export function PasswordChangeClient() {
         </div>
         <Link
           href={APP_ROUTES.profile}
-          className="inline-flex w-fit rounded-full border border-white/10 px-5 py-3 text-sm font-semibold text-white transition hover:border-[rgba(76,207,255,0.4)] hover:text-[var(--accent-cyan)]"
+          className="btn-ghost w-fit"
         >
           Назад до профілю
         </Link>

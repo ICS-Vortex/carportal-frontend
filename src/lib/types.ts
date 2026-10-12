@@ -8,60 +8,6 @@ export type AuthUser = {
   hasGoogleAccount?: boolean;
 };
 
-export type AdminOverviewResponse = {
-  stats: {
-    users_count: string;
-    blocked_users_count: string;
-    deleted_users_count: string;
-    vehicles_count: string;
-    service_logs_count: string;
-    reminders_count: string;
-    templates_count: string;
-    procedures_count: string;
-    missing_plan_requests_count: string;
-  };
-  users: Array<{
-    id: string;
-    email: string;
-    full_name: string;
-    role: "user" | "admin";
-    avatar_url: string | null;
-    is_blocked: boolean;
-    deleted: boolean;
-    created_at: string;
-    vehicles_count: string;
-  }>;
-  missingPlanRequests: Array<{
-    id: string;
-    status: "open" | "resolved";
-    request_note: string | null;
-    created_at: string;
-    user_id: string;
-    user_full_name: string;
-    user_email: string;
-    vehicle_id: string;
-    vehicle_name: string;
-    vehicle_year: number;
-    generation_name: string | null;
-    configuration_label: string | null;
-  }>;
-};
-
-export type AdminManagedUser = {
-  id: string;
-  email: string;
-  full_name: string;
-  role: "user" | "admin";
-  avatar_url: string | null;
-  is_blocked: boolean;
-  blocked_at: string | null;
-  deleted: boolean;
-  deleted_at: string | null;
-  created_at: string;
-  updated_at: string;
-  vehicles_count: string;
-};
-
 export type Vehicle = {
   id: string;
   user_id: string;
@@ -119,6 +65,7 @@ export type Procedure = {
   description_uk: string | null;
   default_interval_km: number | null;
   default_interval_months: number | null;
+  labor_price_uah: number | null;
   category: string;
 };
 
@@ -169,27 +116,8 @@ export type CatalogResponse = {
     interval_km: number | null;
     interval_months: number | null;
     notes_uk: string | null;
+    labor_price_uah: number | null;
   }>;
-};
-
-export type AdminCatalogResponse = CatalogResponse & {
-  templateHeaders: Array<{
-    id: string;
-    name_uk: string;
-    generation_id: string;
-    configuration_id: string | null;
-    vehicle_make: string;
-    vehicle_model: string;
-    generation_code: string | null;
-    configuration_label: string | null;
-    engine_name: string | null;
-    transmission_name: string | null;
-    drivetrain_label: string | null;
-    year_from: number | null;
-    year_to: number | null;
-    notes_uk: string | null;
-  }>;
-  vehicleCatalog: VehicleCatalogResponse;
 };
 
 export type MaintenanceTemplateCandidate = {
@@ -219,6 +147,7 @@ export type MaintenancePlanItem = {
   interval_km: number | null;
   interval_months: number | null;
   notes_uk: string | null;
+  labor_price_uah: number | null;
   sort_order: number;
   status: "pending" | "done" | "skipped";
   current_status: "pending" | "done" | "skipped" | "overdue";
@@ -259,44 +188,4 @@ export type MaintenancePlanResponse = {
     request_note: string | null;
     created_at: string;
   } | null;
-};
-
-export type LandingContentResponse = {
-  slides: Array<{
-    id: string;
-    eyebrow: string;
-    title: string;
-    detail: string;
-    primaryCta: { label: string; href: string };
-    secondaryCta: { label: string; href: string };
-    metrics: Array<{ value: string; label: string }>;
-  }>;
-  banners: Array<{
-    id: string;
-    tag: string;
-    title: string;
-    detail: string;
-    href: string;
-    actionLabel: string;
-  }>;
-  audience: Array<{
-    id: string;
-    title: string;
-    detail: string;
-  }>;
-  downloads: Array<{
-    platform: string;
-    title: string;
-    caption: string;
-    href: string;
-    status: string;
-  }>;
-  news: Array<{
-    id: string;
-    title: string;
-    detail: string;
-    tag: string;
-    publishedAt: string;
-  }>;
-  generatedAt: string;
 };

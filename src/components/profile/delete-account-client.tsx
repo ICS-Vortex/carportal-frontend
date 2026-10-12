@@ -60,7 +60,7 @@ export function DeleteAccountClient() {
             <input
               value={password}
               onChange={(event) => setPassword(event.target.value)}
-              className="rounded-2xl border border-white/10 bg-white/5 px-4 py-3 text-white outline-none transition focus:border-[rgb(255,143,76)]"
+              className="field"
               type="password"
               minLength={8}
               required
@@ -72,14 +72,14 @@ export function DeleteAccountClient() {
           <input
             value={confirmationText}
             onChange={(event) => setConfirmationText(event.target.value)}
-            className="rounded-2xl border border-white/10 bg-white/5 px-4 py-3 text-white outline-none transition focus:border-[rgb(255,143,76)]"
+            className="field"
             placeholder="ВИДАЛИТИ"
             required
           />
         </label>
         <button
           disabled={isPending}
-          className="w-fit rounded-full bg-[linear-gradient(135deg,#ff8f4c,#ff5f57)] px-5 py-3 text-sm font-semibold text-slate-950 disabled:opacity-60"
+          className="btn-danger w-fit"
         >
           Видалити акаунт
         </button>
@@ -91,7 +91,7 @@ export function DeleteAccountClient() {
         </div>
         <Link
           href={APP_ROUTES.profile}
-          className="inline-flex w-fit rounded-full border border-white/10 px-5 py-3 text-sm font-semibold text-white transition hover:border-[rgba(76,207,255,0.4)] hover:text-[var(--accent-cyan)]"
+          className="btn-ghost w-fit"
         >
           Назад до профілю
         </Link>

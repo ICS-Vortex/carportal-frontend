@@ -14,9 +14,7 @@ function statusLabel(status: string): string {
 }
 
 function statusClass(status: string): string {
-  return status === "due"
-    ? "border-[rgba(255,95,87,0.28)] bg-[rgba(255,95,87,0.1)] text-white"
-    : "border-[rgba(76,207,255,0.24)] bg-[rgba(76,207,255,0.08)] text-white";
+  return status === "due" ? "status-due" : "status-soon";
 }
 
 type ReminderGroup = {
@@ -136,17 +134,17 @@ export function RemindersClient() {
             <section className="rounded-[24px] border border-[rgba(255,95,87,0.22)] bg-[rgba(255,95,87,0.06)] p-5">
               <div className="flex flex-wrap items-center justify-between gap-3">
                 <div>
-                  <p className="text-xs font-semibold uppercase tracking-[0.28em] text-[rgba(255,190,184,0.9)]">Що зробити в першу чергу</p>
-                  <h3 className="mt-3 text-2xl font-semibold text-white">Найкритичніші пункти на зараз</h3>
+                  <p className="text-xs font-semibold uppercase tracking-[0.28em] text-[var(--accent)]">Що зробити в першу чергу</p>
+                  <h3 className="mt-3 text-2xl font-semibold text-[var(--foreground)]">Найкритичніші пункти на зараз</h3>
                 </div>
-                <span className="rounded-full border border-[rgba(255,95,87,0.28)] bg-[rgba(255,95,87,0.1)] px-3 py-2 text-sm text-white">
+                <span className="rounded-full border border-[rgba(255,95,87,0.28)] bg-[rgba(255,95,87,0.1)] px-3 py-2 text-sm text-[var(--foreground)]">
                   {priorityGroups.length} у фокусі
                 </span>
               </div>
               <div className="mt-5 grid gap-3 lg:grid-cols-3">
                 {priorityGroups.map((group) => (
-                  <article key={`priority-${group.key}`} className="rounded-[20px] border border-white/10 bg-black/15 p-4">
-                    <h4 className="text-lg font-semibold text-white">{group.vehicleName}</h4>
+                  <article key={`priority-${group.key}`} className="rounded-[20px] border border-[var(--line)] bg-black/15 p-4">
+                    <h4 className="text-lg font-semibold text-[var(--foreground)]">{group.vehicleName}</h4>
                     <p className="mt-2 text-sm leading-6 text-[var(--muted)]">{summarizeGroupTitle(group)}</p>
                     <p className="mt-3 text-sm leading-6 text-[var(--muted)]">
                       {group.earliestDueDate ? `Найближча дата: ${new Date(group.earliestDueDate).toLocaleDateString("uk-UA")}. ` : "Дату ще не розраховано. "}
@@ -154,16 +152,16 @@ export function RemindersClient() {
                     </p>
                     <div className="mt-3 flex flex-wrap gap-2">
                       {group.items.slice(0, 3).map((item) => (
-                        <span key={`priority-item-${group.key}-${item.procedure_id}`} className="rounded-full border border-white/10 bg-white/5 px-3 py-1.5 text-xs text-[var(--muted)]">
+                        <span key={`priority-item-${group.key}-${item.procedure_id}`} className="rounded-full border border-[var(--line)] bg-white/5 px-3 py-1.5 text-xs text-[var(--muted)]">
                           {item.procedure_title}
                         </span>
                       ))}
                     </div>
                     <div className="mt-4 flex flex-wrap gap-2">
-                      <Link href={buildVehicleHref(APP_ROUTES.maintenance, group.items[0].vehicle_id)} className="rounded-full bg-[linear-gradient(135deg,#4f84ff,#4ccfff)] px-3.5 py-2 text-xs font-semibold text-slate-950 transition hover:brightness-105">
+                      <Link href={buildVehicleHref(APP_ROUTES.maintenance, group.items[0].vehicle_id)} className="btn-primary btn-sm">
                         Перейти до регламенту
                       </Link>
-                      <Link href={buildServiceLogHref(group.items[0].vehicle_id, group.items.map((item) => item.procedure_id))} className="rounded-full border border-white/10 px-3.5 py-2 text-xs font-semibold text-white transition hover:border-white/20 hover:bg-white/5">
+                      <Link href={buildServiceLogHref(group.items[0].vehicle_id, group.items.map((item) => item.procedure_id))} className="btn-ghost btn-sm">
                         Записати сервіс
                       </Link>
                     </div>
@@ -175,22 +173,22 @@ export function RemindersClient() {
 
           <section className="grid gap-3 md:grid-cols-2">
             <article className="rounded-[24px] border border-[rgba(255,95,87,0.22)] bg-[rgba(255,95,87,0.08)] p-5">
-              <p className="text-xs font-semibold uppercase tracking-[0.28em] text-[rgba(255,190,184,0.9)]">Потрібна дія</p>
-              <p className="mt-3 text-3xl font-semibold text-white">{dueCount}</p>
+              <p className="text-xs font-semibold uppercase tracking-[0.28em] text-[var(--accent)]">Потрібна дія</p>
+              <p className="mt-3 text-3xl font-semibold text-[var(--foreground)]">{dueCount}</p>
               <p className="mt-2 text-sm leading-6 text-[var(--muted)]">Кількість пунктів, які вже вийшли на строк по даті або по пробігу.</p>
             </article>
-            <article className="rounded-[24px] border border-[rgba(76,207,255,0.18)] bg-[rgba(76,207,255,0.06)] p-5">
+            <article className="rounded-[24px] border border-[rgba(197,27,27,0.22)] bg-[rgba(197,27,27,0.06)] p-5">
               <p className="text-xs font-semibold uppercase tracking-[0.28em] text-[var(--accent-cyan)]">Наближається</p>
-              <p className="mt-3 text-3xl font-semibold text-white">{upcomingCount}</p>
+              <p className="mt-3 text-3xl font-semibold text-[var(--foreground)]">{upcomingCount}</p>
               <p className="mt-2 text-sm leading-6 text-[var(--muted)]">Роботи, до яких варто підготуватися заздалегідь, поки вони ще не прострочені.</p>
             </article>
           </section>
 
           {groups.map((group) => (
-            <article key={group.key} className="rounded-[24px] border border-white/10 bg-white/4 p-5">
+            <article key={group.key} className="rounded-[24px] border border-[var(--line)] bg-white/4 p-5">
               <div className="flex flex-wrap items-center justify-between gap-3">
                 <div>
-                  <h3 className="text-xl font-semibold text-white">{summarizeGroupTitle(group)}</h3>
+                  <h3 className="text-xl font-semibold text-[var(--foreground)]">{summarizeGroupTitle(group)}</h3>
                   <p className="mt-2 text-sm text-[var(--muted)]">{group.vehicleName}</p>
                 </div>
                 <span className={`rounded-full border px-3 py-2 text-sm ${statusClass(group.status)}`}>{statusLabel(group.status)}</span>
@@ -201,21 +199,21 @@ export function RemindersClient() {
               </p>
               <div className="mt-4 flex flex-wrap gap-2">
                 {group.items.slice(0, 4).map((item) => (
-                  <span key={`${group.key}-${item.procedure_id}`} className="rounded-full border border-white/10 bg-black/20 px-3 py-2 text-sm text-[var(--muted)]">
+                  <span key={`${group.key}-${item.procedure_id}`} className="rounded-full border border-[var(--line)] bg-[#f6f6f6] px-3 py-2 text-sm text-[var(--muted)]">
                     {item.procedure_title}
                   </span>
                 ))}
                 {group.items.length > 4 ? (
-                  <span className="rounded-full border border-white/10 bg-black/20 px-3 py-2 text-sm text-[var(--muted)]">
+                  <span className="rounded-full border border-[var(--line)] bg-[#f6f6f6] px-3 py-2 text-sm text-[var(--muted)]">
                     Ще {group.items.length - 4}
                   </span>
                 ) : null}
               </div>
               <div className="mt-4 flex flex-wrap gap-2">
-                <Link href={buildVehicleHref(APP_ROUTES.maintenance, group.items[0].vehicle_id)} className="rounded-full bg-[linear-gradient(135deg,#4f84ff,#4ccfff)] px-4 py-2 text-sm font-semibold text-slate-950 transition hover:brightness-105">
+                <Link href={buildVehicleHref(APP_ROUTES.maintenance, group.items[0].vehicle_id)} className="btn-primary">
                   Відкрити регламент для цього авто
                 </Link>
-                <Link href={buildServiceLogHref(group.items[0].vehicle_id, group.items.map((item) => item.procedure_id))} className="rounded-full border border-white/10 px-4 py-2 text-sm font-semibold text-white transition hover:border-white/20 hover:bg-white/5">
+                <Link href={buildServiceLogHref(group.items[0].vehicle_id, group.items.map((item) => item.procedure_id))} className="btn-ghost">
                   Записати сервіс по цих роботах
                 </Link>
               </div>

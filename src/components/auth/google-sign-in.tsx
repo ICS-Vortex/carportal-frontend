@@ -82,9 +82,9 @@ export function GoogleSignIn({ onSuccess, onStatus }: GoogleSignInProps) {
       <button
         type="button"
         disabled
-        className="rounded-full border border-white/10 px-5 py-3 text-sm font-semibold text-white/60"
+        className="border border-[#d5d5d5] bg-white px-5 py-3 text-xs font-medium tracking-[0.06em] text-[#5c5c5c] uppercase"
       >
-        Додайте NEXT_PUBLIC_GOOGLE_CLIENT_ID для Google входу
+        Google-вхід ще не налаштовано
       </button>
     );
   }

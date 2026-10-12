@@ -1,69 +1,69 @@
 "use client";
 
+import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
 import type { ReactNode } from "react";
 import { useEffect, useState } from "react";
 
-import { Bell, CarFront, Gauge, Home, KeyRound, ListChecks, Settings2, ShieldCheck, UserRound, Wrench } from "lucide-react";
+import { Bell, CarFront, Gauge, ListChecks, LogOut, Menu, UserRound, Wrench, X } from "lucide-react";
 
-import { TopNav } from "@/components/shell/top-nav";
-import { getApiErrorMessage, getSession, listReminders } from "@/lib/api";
+import { getApiErrorMessage, getSession, listReminders, logout } from "@/lib/api";
 import { APP_ROUTES } from "@/lib/routes";
 import type { AuthUser } from "@/lib/types";
 
-const navigation = [
-  { href: APP_ROUTES.home, label: "Головна", icon: Home, access: "all" },
-  { href: APP_ROUTES.dashboard, label: "Кабінет", icon: Gauge, access: "auth" },
-  { href: APP_ROUTES.garage, label: "Гараж", icon: CarFront, access: "auth" },
-  { href: APP_ROUTES.maintenance, label: "Регламент ТО", icon: Wrench, access: "auth" },
-  { href: APP_ROUTES.serviceLogs, label: "Журнал сервісу", icon: ListChecks, access: "auth" },
-  { href: APP_ROUTES.reminders, label: "Нагадування", icon: Bell, access: "auth" },
-  { href: APP_ROUTES.profile, label: "Профіль", icon: UserRound, access: "auth" },
-  { href: APP_ROUTES.profilePassword, label: "Пароль", icon: KeyRound, access: "auth" },
-  { href: APP_ROUTES.admin, label: "Керування", icon: Settings2, access: "admin" },
-  { href: APP_ROUTES.auth, label: "Авторизація", icon: ShieldCheck, access: "public" }
+const primaryNavigation = [
+  { href: APP_ROUTES.dashboard, label: "Огляд", icon: Gauge },
+  { href: APP_ROUTES.garage, label: "Гараж", icon: CarFront },
+  { href: APP_ROUTES.maintenance, label: "Регламент", icon: Wrench },
+  { href: APP_ROUTES.serviceLogs, label: "Журнал", icon: ListChecks },
+  { href: APP_ROUTES.reminders, label: "Нагадування", icon: Bell }
+];
+
+const accountNavigation = [
+  { href: APP_ROUTES.profile, label: "Профіль", icon: UserRound }
 ];
 
 type AppShellProps = {
-  activeHref: string;
   heading: string;
-  description: string;
+  description?: string;
   children: ReactNode;
-  access?: "public" | "auth" | "admin";
 };
 
-export function AppShell({ activeHref, heading, description, children, access = "auth" }: AppShellProps) {
+function isActiveRoute(href: string, pathname: string) {
+  if (href === APP_ROUTES.dashboard) {
+    return pathname === APP_ROUTES.dashboard;
+  }
+
+  if (href === APP_ROUTES.profile) {
+    return pathname === APP_ROUTES.profile || pathname.startsWith(`${APP_ROUTES.profileDelete}`);
+  }
+
+  return pathname === href || pathname.startsWith(`${href}/`);
+}
+
+function initials(name: string) {
+  const letters = name
+    .split(" ")
+    .map((part) => part.trim())
+    .filter(Boolean)
+    .slice(0, 2)
+    .map((part) => part[0]?.toUpperCase() ?? "");
+
+  return letters.join("") || "В";
+}
+
+export function AppShell({ heading, description, children }: AppShellProps) {
   const router = useRouter();
   const pathname = usePathname();
   const [session, setSession] = useState<AuthUser | null>(null);
-  const [loading, setLoading] = useState(access !== "public");
+  const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
-  const [remindersCount, setRemindersCount] = useState<number>(0);
+  const [remindersCount, setRemindersCount] = useState(0);
+  const [menuOpen, setMenuOpen] = useState(false);
+  const [signingOut, setSigningOut] = useState(false);
 
   useEffect(() => {
     let cancelled = false;
-
-    if (access === "public") {
-      setLoading(false);
-      void getSession()
-        .then((user) => {
-          if (!cancelled) {
-            setSession(user);
-          }
-        })
-        .catch(() => {
-          if (!cancelled) {
-            setSession(null);
-          }
-        });
-
-      return () => {
-        cancelled = true;
-      };
-    }
-
-    setLoading(true);
-    setError("");
 
     void getSession()
       .then((user) => {
@@ -71,20 +71,13 @@ export function AppShell({ activeHref, heading, description, children, access = 
           return;
         }
 
-        setSession(user);
-
         if (!user) {
+          setLoading(false);
           router.replace(`${APP_ROUTES.auth}?next=${encodeURIComponent(pathname)}`);
-          setLoading(false);
           return;
         }
 
-        if (access === "admin" && user.role !== "admin") {
-          router.replace(APP_ROUTES.dashboard);
-          setLoading(false);
-          return;
-        }
-
+        setSession(user);
         setLoading(false);
       })
       .catch((requestError) => {
@@ -99,13 +92,12 @@ export function AppShell({ activeHref, heading, description, children, access = 
     return () => {
       cancelled = true;
     };
-  }, [access, pathname, router]);
+  }, [pathname, router]);
 
   useEffect(() => {
     let cancelled = false;
 
     if (!session) {
-      setRemindersCount(0);
       return () => {
         cancelled = true;
       };
@@ -128,63 +120,139 @@ export function AppShell({ activeHref, heading, description, children, access = 
     };
   }, [session]);
 
-  const visibleNavigation = navigation.filter((item) => {
-    if (item.access === "all") {
-      return true;
-    }
+  useEffect(() => {
+    setMenuOpen(false);
+  }, [pathname]);
 
-    if (item.access === "public") {
-      return !session;
-    }
+  function handleLogout() {
+    setSigningOut(true);
+    void logout()
+      .then(() => {
+          router.replace(APP_ROUTES.home);
+        router.refresh();
+      })
+      .catch((requestError) => {
+        setError(getApiErrorMessage(requestError));
+        setSigningOut(false);
+      });
+  }
 
-    if (item.access === "admin") {
-      return session?.role === "admin";
-    }
+  const navigation = (
+    <nav className="flex flex-1 flex-col gap-6">
+      <div className="space-y-1">
+        <p className="px-3 pb-2 text-[10px] font-semibold uppercase tracking-[0.22em] text-white/45">Кабінет</p>
+        {primaryNavigation.map((item) => {
+          const Icon = item.icon;
+          const active = isActiveRoute(item.href, pathname);
 
-    return Boolean(session);
-  });
+          return (
+            <Link
+              key={item.href}
+              href={item.href}
+              className={active
+                ? "flex items-center justify-between bg-[#c51b1b] px-3 py-2.5 text-sm font-medium text-white"
+                : "flex items-center justify-between px-3 py-2.5 text-sm font-medium text-white/70 transition hover:bg-white/10 hover:text-white"
+              }
+            >
+              <span className="inline-flex items-center gap-3">
+                <Icon className="h-4 w-4" />
+                {item.label}
+              </span>
+              {item.href === APP_ROUTES.reminders && remindersCount > 0 ? (
+                <span className="inline-flex min-w-6 items-center justify-center bg-white px-1.5 py-0.5 text-[11px] font-semibold text-[#c51b1b]">
+                  {remindersCount > 99 ? "99+" : remindersCount}
+                </span>
+              ) : null}
+            </Link>
+          );
+        })}
+      </div>
+      <div className="space-y-1">
+        <p className="px-3 pb-2 text-[10px] font-semibold uppercase tracking-[0.22em] text-white/45">Акаунт</p>
+        {accountNavigation.map((item) => {
+          const Icon = item.icon;
+          const active = isActiveRoute(item.href, pathname);
 
-  const blocked = !loading && access !== "public" && (!session || (access === "admin" && session.role !== "admin"));
-  const isPublicGuest = access === "public" && !session;
-  const isProtectedPreview = access !== "public" && !session;
-  const resolvedHeading = isProtectedPreview ? "Закритий розділ" : heading;
-  const resolvedDescription = isProtectedPreview
-    ? "Авторизуйтеся, щоб перейти до внутрішніх сторінок кабінету водія."
-    : description;
-  const primaryHrefs = new Set<string>([APP_ROUTES.home, APP_ROUTES.dashboard, APP_ROUTES.garage, APP_ROUTES.maintenance, APP_ROUTES.serviceLogs, APP_ROUTES.reminders]);
-  const primaryItems = visibleNavigation
-    .filter((item) => primaryHrefs.has(item.href))
-    .map((item) => item.href === APP_ROUTES.reminders ? { ...item, badgeCount: remindersCount } : item);
-  const utilityItems = visibleNavigation.filter((item) => !primaryHrefs.has(item.href));
-  const showTopNav = !isPublicGuest;
-  const showHeader = access !== "public";
+          return (
+            <Link
+              key={item.href}
+              href={item.href}
+              className={active
+                ? "flex items-center gap-3 bg-[#c51b1b] px-3 py-2.5 text-sm font-medium text-white"
+                : "flex items-center gap-3 px-3 py-2.5 text-sm font-medium text-white/70 transition hover:bg-white/10 hover:text-white"
+              }
+            >
+              <Icon className="h-4 w-4" />
+              {item.label}
+            </Link>
+          );
+        })}
+      </div>
+    </nav>
+  );
 
   return (
-    <div className={`flex min-h-screen w-full flex-col px-4 pb-12 ${showTopNav ? "pt-4" : "pt-8"} sm:px-6 lg:px-10`}>
-      {showTopNav ? <TopNav primaryItems={primaryItems} utilityItems={utilityItems} activeHref={activeHref} pathname={pathname} session={session} /> : null}
-      {showHeader ? <header className="relative mb-8 overflow-hidden rounded-[32px] border border-white/10 bg-[rgba(6,17,31,0.72)] px-5 py-6 shadow-[0_24px_90px_rgba(0,0,0,0.25)] backdrop-blur-xl sm:px-7 sm:py-7">
-        <div className="pointer-events-none absolute inset-0 bg-[radial-gradient(circle_at_top_right,rgba(76,207,255,0.18),transparent_30%),radial-gradient(circle_at_bottom_left,rgba(79,132,255,0.16),transparent_28%)]" />
-        <div className="relative">
-          <div>
-            <span className="text-xs font-semibold uppercase tracking-[0.35em] text-[var(--accent-cyan)]">Кабінет водія</span>
-            <h1 className="mt-3 font-[family-name:var(--font-display)] text-3xl font-semibold text-white sm:text-4xl">{resolvedHeading}</h1>
-            <p className="mt-3 max-w-3xl text-sm leading-6 text-[var(--muted)] sm:text-base">{resolvedDescription}</p>
+    <div className="atelier">
+      <aside className="atelier-rail">
+        <div className="flex items-center justify-between gap-3">
+          <Link href={APP_ROUTES.dashboard} className="leading-none">
+            <span className="display block text-3xl text-[#c51b1b]">Carmain</span>
+            <span className="mt-1 block text-[11px] font-medium tracking-[0.22em] text-[#e7b3b3]">КАБІНЕТ</span>
+          </Link>
+          <button
+            type="button"
+            className="btn-ghost btn-sm rail-toggle"
+            onClick={() => setMenuOpen((current) => !current)}
+            aria-label={menuOpen ? "Закрити меню" : "Відкрити меню"}
+          >
+            {menuOpen ? <X className="h-4 w-4" /> : <Menu className="h-4 w-4" />}
+          </button>
+        </div>
+
+        <div className={`rail-body ${menuOpen ? "is-open" : ""}`}>
+          {navigation}
+          <div className="mt-auto border border-white/15 p-3">
+            <div className="flex items-center gap-3">
+              {session?.avatarUrl ? (
+                <img src={session.avatarUrl} alt="" className="h-10 w-10 object-cover" />
+              ) : (
+                <span className="flex h-10 w-10 items-center justify-center bg-[#c51b1b] text-sm font-semibold text-white">
+                  {initials(session?.fullName ?? "")}
+                </span>
+              )}
+              <div className="min-w-0">
+                <p className="truncate text-sm font-semibold text-white">{session?.fullName ?? "Власник"}</p>
+                <p className="truncate text-xs text-white/55">{session?.email ?? "Потрібен вхід"}</p>
+              </div>
+            </div>
+            <button type="button" onClick={handleLogout} disabled={signingOut || !session} className="mt-3 inline-flex w-full items-center justify-center gap-2 border border-white/20 px-3 py-2 text-xs font-medium tracking-[0.08em] text-white uppercase hover:bg-white/10">
+              <LogOut className="h-4 w-4" />
+              {signingOut ? "Вихід..." : "Вийти"}
+            </button>
           </div>
         </div>
-      </header> : null}
-      <main className="flex-1">
-        {loading ? (
-          <div className="rounded-[28px] border border-white/10 bg-[rgba(6,17,31,0.72)] p-8 text-sm text-[var(--muted)] backdrop-blur-xl">
-            Перевіряємо доступ до розділу...
-          </div>
-        ) : blocked ? (
-          <div className="rounded-[28px] border border-white/10 bg-[rgba(6,17,31,0.72)] p-8 text-sm text-[var(--muted)] backdrop-blur-xl">
-            {error || (access === "admin" ? "Доступ до розділу керування дозволено лише адміністратору." : "Потрібна авторизація. Перенаправляємо на сторінку входу...")}
-          </div>
-        ) : (
-          children
-        )}
-      </main>
+      </aside>
+
+      <div className="atelier-main">
+        <header className="mb-8 max-w-3xl">
+          <p className="eyebrow">Кабінет</p>
+          <h1 className="display mt-3 text-3xl text-[var(--foreground)] sm:text-5xl">{heading}</h1>
+          {description ? <p className="mt-3 max-w-2xl text-sm leading-6 text-[var(--muted)] sm:text-base">{description}</p> : null}
+        </header>
+        <main>
+          {loading ? (
+            <div className="border border-[var(--line)] bg-white p-8 text-sm text-[var(--muted)]">
+              Відкриваємо ваш кабінет...
+            </div>
+          ) : !session ? (
+            <div className="border border-[var(--line)] bg-white p-8 text-sm text-[var(--muted)]">
+              {error || "Потрібен вхід. Перенаправляємо на сторінку входу..."}
+            </div>
+          ) : (
+            children
+          )}
+        </main>
+      </div>
     </div>
   );
 }

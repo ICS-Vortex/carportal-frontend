@@ -22,18 +22,3 @@ export const GARAGE_UI = {
     action: "Прибрати з гаражу"
   }
 } as const;
-
-export const ADMIN_TEMPLATE_UI = {
-  form: {
-    titleLabel: "Назва шаблону",
-    titlePlaceholder: "Назва шаблону",
-    makeLabel: "Марка",
-    modelLabel: "Модель",
-    generationLabel: "Покоління",
-    configurationLabel: "Двигун і трансмісія",
-    notesLabel: "Нотатки",
-    notesPlaceholder: "Короткі уточнення по цьому плану",
-    saveCreate: "Створити шаблон",
-    saveUpdate: "Оновити шаблон"
-  }
-} as const;
