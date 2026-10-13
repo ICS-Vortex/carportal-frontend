@@ -94,6 +94,8 @@ export type ServiceLog = {
   id: string;
   vehicle_id: string;
   service_date: string;
+  service_time?: string | null;
+  record_kind?: "visit" | "appointment";
   mileage_km: number;
   service_station: string | null;
   service_station_id?: string | null;
@@ -103,6 +105,13 @@ export type ServiceLog = {
     title_uk: string;
     notes_uk: string | null;
   }>;
+};
+
+export type AppointmentSlot = {
+  time: string;
+  available: boolean;
+  booked_count: number;
+  capacity: number;
 };
 
 export type Reminder = {

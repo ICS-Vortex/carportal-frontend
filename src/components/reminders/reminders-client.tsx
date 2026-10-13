@@ -6,7 +6,7 @@ import { useEffect, useState } from "react";
 import { EmptyState } from "@/components/shared/empty-state";
 import { useToast } from "@/components/shared/toast-provider";
 import { getApiErrorMessage, listReminders } from "@/lib/api";
-import { APP_ROUTES } from "@/lib/routes";
+import { APP_ROUTES, buildServiceLogHref, buildVehicleScopedHref } from "@/lib/routes";
 import type { Reminder } from "@/lib/types";
 
 function statusLabel(status: string): string {
@@ -88,20 +88,6 @@ function selectPriorityGroups(groups: ReminderGroup[]): ReminderGroup[] {
     .slice(0, 3);
 }
 
-function buildVehicleHref(basePath: string, vehicleId: string) {
-  return `${basePath}?vehicleId=${encodeURIComponent(vehicleId)}`;
-}
-
-function buildServiceLogHref(vehicleId: string, procedureIds: string[]) {
-  const params = new URLSearchParams({ vehicleId });
-
-  if (procedureIds.length > 0) {
-    params.set("procedureIds", procedureIds.join(","));
-  }
-
-  return `${APP_ROUTES.serviceLogs}?${params.toString()}`;
-}
-
 export function RemindersClient() {
   const [items, setItems] = useState<Reminder[]>([]);
   const toast = useToast();
@@ -154,10 +140,16 @@ export function RemindersClient() {
                       ))}
                     </div>
                     <div className="mt-4 flex flex-wrap gap-2">
-                      <Link href={buildVehicleHref(APP_ROUTES.maintenance, group.items[0].vehicle_id)} className="btn-primary btn-sm">
+                      <Link href={buildVehicleScopedHref(APP_ROUTES.maintenance, group.items[0].vehicle_id)} className="btn-primary btn-sm">
                         Перейти до регламенту
                       </Link>
-                      <Link href={buildServiceLogHref(group.items[0].vehicle_id, group.items.map((item) => item.procedure_id))} className="btn-ghost btn-sm">
+                      <Link
+                        href={buildServiceLogHref(group.items[0].vehicle_id, {
+                          procedureIds: group.items.map((item) => item.procedure_id),
+                          openCreate: true
+                        })}
+                        className="btn-ghost btn-sm"
+                      >
                         Записати сервіс
                       </Link>
                     </div>
@@ -206,10 +198,16 @@ export function RemindersClient() {
                 ) : null}
               </div>
               <div className="mt-4 flex flex-wrap gap-2">
-                <Link href={buildVehicleHref(APP_ROUTES.maintenance, group.items[0].vehicle_id)} className="btn-primary">
+                <Link href={buildVehicleScopedHref(APP_ROUTES.maintenance, group.items[0].vehicle_id)} className="btn-primary">
                   Відкрити регламент для цього авто
                 </Link>
-                <Link href={buildServiceLogHref(group.items[0].vehicle_id, group.items.map((item) => item.procedure_id))} className="btn-ghost">
+                <Link
+                  href={buildServiceLogHref(group.items[0].vehicle_id, {
+                    procedureIds: group.items.map((item) => item.procedure_id),
+                    openCreate: true
+                  })}
+                  className="btn-ghost"
+                >
                   Записати сервіс по цих роботах
                 </Link>
               </div>

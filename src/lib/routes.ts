@@ -15,6 +15,27 @@ export const APP_ROUTES = {
   profile: "/profile"
 } as const;
 
+export function buildVehicleScopedHref(basePath: string, vehicleId: string): string {
+  return `${basePath}?vehicleId=${encodeURIComponent(vehicleId)}`;
+}
+
+export function buildServiceLogHref(
+  vehicleId: string,
+  options?: { procedureIds?: string[]; openCreate?: boolean; appointment?: boolean }
+): string {
+  const params = new URLSearchParams({ vehicleId });
+
+  if (options?.procedureIds?.length) {
+    params.set("procedureIds", options.procedureIds.join(","));
+  }
+
+  if (options?.openCreate ?? options?.appointment) {
+    params.set("create", "1");
+  }
+
+  return `${APP_ROUTES.serviceLogs}?${params.toString()}`;
+}
+
 export const API_ROUTES = {
   auth: {
     csrf: "/v1/auth/csrf",
@@ -45,6 +66,7 @@ export const API_ROUTES = {
   catalog: {
     list: "/v1/catalog",
     reminders: "/v1/reminders",
-    serviceStations: "/v1/service-stations"
+    serviceStations: "/v1/service-stations",
+    serviceStationAppointmentSlots: (stationId: string) => `/v1/service-stations/${stationId}/appointment-slots`
   }
 } as const;

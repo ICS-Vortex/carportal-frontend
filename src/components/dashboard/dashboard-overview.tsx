@@ -103,8 +103,7 @@ export function DashboardOverview() {
               )}
               <div className="absolute inset-0 bg-[linear-gradient(180deg,rgba(12,11,10,0.05),rgba(12,11,10,0.78))]" />
               <div className="relative flex h-full flex-col justify-end p-6 sm:p-8">
-                <p className="eyebrow">Обране авто</p>
-                <h2 className="display mt-3 text-5xl leading-none text-white sm:text-6xl">
+                <h2 className="display text-5xl leading-none text-white sm:text-6xl">
                   {activeVehicle.make}
                   <span className="block">{activeVehicle.model}</span>
                 </h2>

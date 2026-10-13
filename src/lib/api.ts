@@ -1,4 +1,4 @@
-import type { AuthUser, CatalogResponse, MaintenancePlanResponse, MaintenanceRequestOptions, Reminder, ServiceLog, ServiceStation, Vehicle, VehicleCatalogResponse } from "@/lib/types";
+import type { AppointmentSlot, AuthUser, CatalogResponse, MaintenancePlanResponse, MaintenanceRequestOptions, Reminder, ServiceLog, ServiceStation, Vehicle, VehicleCatalogResponse } from "@/lib/types";
 import { API_ROUTES } from "@/lib/routes";
 
 function apiBaseUrl(): string {
@@ -334,7 +334,9 @@ export async function listServiceLogs(vehicleId: string): Promise<ServiceLog[]> 
 
 export async function createServiceLog(vehicleId: string, input: {
   serviceDate: string;
-  mileageKm: number;
+  serviceTime?: string | null;
+  recordKind?: "visit" | "appointment";
+  mileageKm?: number;
   serviceStation?: string | null;
   serviceStationId?: string | null;
   notesUk?: string | null;
@@ -363,6 +365,12 @@ export async function listReminders(): Promise<Reminder[]> {
 
 export async function listServiceStations(): Promise<ServiceStation[]> {
   const payload = await apiRequest<{ items: ServiceStation[] }>(API_ROUTES.catalog.serviceStations);
+  return payload.items;
+}
+
+export async function listServiceStationAppointmentSlots(stationId: string, date: string): Promise<AppointmentSlot[]> {
+  const path = `${API_ROUTES.catalog.serviceStationAppointmentSlots(stationId)}?date=${encodeURIComponent(date)}`;
+  const payload = await apiRequest<{ items: AppointmentSlot[] }>(path);
   return payload.items;
 }
 

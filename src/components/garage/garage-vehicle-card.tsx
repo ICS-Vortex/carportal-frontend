@@ -3,7 +3,7 @@
 import Link from "next/link";
 import { ArrowUpRight } from "lucide-react";
 
-import { APP_ROUTES } from "@/lib/routes";
+import { APP_ROUTES, buildServiceLogHref, buildVehicleScopedHref } from "@/lib/routes";
 import { formatFuelType, formatGarageUpdatedAt, formatLastServiceVisit } from "@/lib/vehicle-display";
 import type { GarageVehicleInsight, Vehicle } from "@/lib/types";
 
@@ -36,7 +36,7 @@ function insightSummary(insight: GarageVehicleInsight | undefined): string | nul
 
 export function GarageVehicleCard({ vehicle, insight, onEdit, onDelete }: GarageVehicleCardProps) {
   const reminderLine = insightSummary(insight);
-  const maintenanceQuery = `?vehicleId=${encodeURIComponent(vehicle.id)}`;
+  const serviceBookingHref = buildServiceLogHref(vehicle.id, { openCreate: true });
 
   return (
     <article className="overflow-hidden rounded-[32px] border border-[var(--line)] bg-[var(--panel-strong)]">
@@ -102,22 +102,25 @@ export function GarageVehicleCard({ vehicle, insight, onEdit, onDelete }: Garage
           </p>
 
           <div className="mt-4 flex flex-wrap gap-3 text-sm font-medium">
-            <Link href={`${APP_ROUTES.maintenance}${maintenanceQuery}`} className="inline-flex items-center gap-1 text-[#c51b1b] hover:underline">
+            <Link href={buildVehicleScopedHref(APP_ROUTES.maintenance, vehicle.id)} className="inline-flex items-center gap-1 text-[#c51b1b] hover:underline">
               Регламент
               <ArrowUpRight className="h-3.5 w-3.5" />
             </Link>
-            <Link href={`${APP_ROUTES.serviceLogs}${maintenanceQuery}`} className="inline-flex items-center gap-1 text-[#c51b1b] hover:underline">
+            <Link href={buildVehicleScopedHref(APP_ROUTES.serviceLogs, vehicle.id)} className="inline-flex items-center gap-1 text-[#c51b1b] hover:underline">
               Журнал
               <ArrowUpRight className="h-3.5 w-3.5" />
             </Link>
-            <Link href={`${APP_ROUTES.reminders}${maintenanceQuery}`} className="inline-flex items-center gap-1 text-[#c51b1b] hover:underline">
+            <Link href={buildVehicleScopedHref(APP_ROUTES.reminders, vehicle.id)} className="inline-flex items-center gap-1 text-[#c51b1b] hover:underline">
               Нагадування
               <ArrowUpRight className="h-3.5 w-3.5" />
             </Link>
           </div>
 
           <div className="mt-5 flex flex-wrap gap-2">
-            <button type="button" onClick={() => onEdit(vehicle)} className="btn-primary">Редагувати</button>
+            <Link href={serviceBookingHref} className="btn-primary">
+              Записатися на СТО
+            </Link>
+            <button type="button" onClick={() => onEdit(vehicle)} className="btn-ghost">Редагувати</button>
             <button type="button" onClick={() => onDelete(vehicle)} className="btn-danger">Прибрати з гаража</button>
           </div>
         </div>

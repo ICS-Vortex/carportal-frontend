@@ -10,15 +10,29 @@ import { EmptyState } from "@/components/shared/empty-state";
 import { useToast } from "@/components/shared/toast-provider";
 import { FancyMultiSelect } from "@/components/ui/fancy-multi-select";
 import { FancySelect } from "@/components/ui/fancy-select";
+import { AppointmentTimeSlots } from "@/components/service-logs/appointment-time-slots";
 import { createServiceLog, deleteServiceLog, getApiErrorMessage, getMaintenancePlan, listServiceLogs, listVehicles } from "@/lib/api";
 import { formatUah, sumUah } from "@/lib/format-money";
+import { kyivTodayDateString } from "@/lib/kyiv-date";
 import type { MaintenancePlanItem, ServiceLog, Vehicle } from "@/lib/types";
 
-const initialForm = {
-  serviceDate: new Date().toISOString().slice(0, 10),
-  mileageKm: "",
-  notesUk: ""
-};
+type CreateModalMode = "visit" | "appointment";
+
+function buildVisitForm(vehicle?: Vehicle) {
+  return {
+    serviceDate: new Date().toISOString().slice(0, 10),
+    mileageKm: vehicle ? String(vehicle.mileage_km) : "",
+    notesUk: ""
+  };
+}
+
+function buildAppointmentForm(vehicle?: Vehicle) {
+  return {
+    serviceDate: kyivTodayDateString(),
+    mileageKm: vehicle ? String(vehicle.mileage_km) : "",
+    notesUk: ""
+  };
+}
 
 export function ServiceLogsClient() {
   const { stationId, stationLabel } = useServiceStation();
@@ -30,12 +44,16 @@ export function ServiceLogsClient() {
     ?.split(",")
     .map((item) => item.trim())
     .filter(Boolean) ?? [];
+  const shouldOpenCreate = searchParams.get("create") === "1";
+  const minServiceDate = kyivTodayDateString();
   const [vehicles, setVehicles] = useState<Vehicle[]>([]);
   const [procedures, setProcedures] = useState<Array<{ id: string; title_uk: string; labor_price_uah: number | null }>>([]);
   const [selectedVehicleId, setSelectedVehicleId] = useState("");
   const [selectedProcedures, setSelectedProcedures] = useState<string[]>([]);
   const [logs, setLogs] = useState<ServiceLog[]>([]);
-  const [form, setForm] = useState(initialForm);
+  const [form, setForm] = useState(buildVisitForm());
+  const [serviceTime, setServiceTime] = useState("");
+  const [createModalMode, setCreateModalMode] = useState<CreateModalMode>("visit");
   const [isCreateModalOpen, setIsCreateModalOpen] = useState(false);
   const [logToDelete, setLogToDelete] = useState<ServiceLog | null>(null);
   const [deletingLogId, setDeletingLogId] = useState<string | null>(null);
@@ -64,10 +82,32 @@ export function ServiceLogsClient() {
   }
 
   useEffect(() => {
-    if (requestedProcedureIds.length > 0 && requestedVehicleId && procedures.length > 0) {
+    if (!requestedVehicleId || selectedVehicleId !== requestedVehicleId || vehicles.length === 0) {
+      return;
+    }
+
+    if (requestedProcedureIds.length > 0 && procedures.length > 0) {
+      setCreateModalMode("appointment");
+      setForm(buildAppointmentForm(vehicles.find((vehicle) => vehicle.id === requestedVehicleId)));
+      setServiceTime("");
+      setIsCreateModalOpen(true);
+      return;
+    }
+
+    if (shouldOpenCreate && requestedProcedureIds.length === 0) {
+      setCreateModalMode("appointment");
+      setForm(buildAppointmentForm(vehicles.find((vehicle) => vehicle.id === requestedVehicleId)));
+      setServiceTime("");
       setIsCreateModalOpen(true);
     }
-  }, [procedures.length, requestedProcedureIds.length, requestedVehicleId]);
+  }, [
+    procedures.length,
+    requestedProcedureIds.length,
+    requestedVehicleId,
+    selectedVehicleId,
+    shouldOpenCreate,
+    vehicles.length
+  ]);
 
   async function refreshBase() {
     try {
@@ -119,6 +159,23 @@ export function ServiceLogsClient() {
     void refreshBase();
   }, [maintenanceOptions, requestedProcedureIds.join(","), requestedVehicleId]);
 
+  const isAppointmentModal = createModalMode === "appointment";
+  const selectedVehicle = vehicles.find((vehicle) => vehicle.id === selectedVehicleId);
+
+  function openVisitCreateModal() {
+    setCreateModalMode("visit");
+    setForm(buildVisitForm(selectedVehicle));
+    setServiceTime("");
+    setIsCreateModalOpen(true);
+  }
+
+  function closeCreateModal() {
+    setIsCreateModalOpen(false);
+    setCreateModalMode("visit");
+    setServiceTime("");
+    setForm(buildVisitForm(selectedVehicle));
+  }
+
   function handleSubmit(event: React.FormEvent<HTMLFormElement>) {
     event.preventDefault();
 
@@ -128,29 +185,57 @@ export function ServiceLogsClient() {
     }
 
     if (selectedProcedures.length === 0) {
-      toast.error("Оберіть хоча б одну процедуру.");
+      toast.error(isAppointmentModal ? "Оберіть хоча б одну роботу для візиту." : "Оберіть хоча б одну процедуру.");
       return;
+    }
+
+    if (isAppointmentModal) {
+      if (!stationId) {
+        toast.error("Оберіть СТО перед записом на візит.");
+        return;
+      }
+
+      if (!serviceTime) {
+        toast.error("Оберіть час візиту з доступних слотів.");
+        return;
+      }
+
+      if (form.serviceDate < minServiceDate) {
+        toast.error("Неможливо обрати дату в минулому.");
+        return;
+      }
     }
 
     startCreateTransition(() => {
       void createServiceLog(selectedVehicleId, {
         serviceDate: form.serviceDate,
-        mileageKm: Number(form.mileageKm),
+        serviceTime: isAppointmentModal ? serviceTime : null,
+        recordKind: isAppointmentModal ? "appointment" : "visit",
+        mileageKm: form.mileageKm ? Number(form.mileageKm) : undefined,
         serviceStationId: stationId || null,
         notesUk: form.notesUk || null,
         items: selectedProcedures.map((procedureId) => ({ procedureId }))
       })
         .then(async () => {
-          setForm(initialForm);
+          closeCreateModal();
           setSelectedProcedures([]);
-          setIsCreateModalOpen(false);
           await refreshBase();
-          toast.success("Сервісний запис додано.");
+          toast.success(isAppointmentModal ? "Запис на СТО збережено." : "Сервісний запис додано.");
         })
         .catch((error) => {
           toast.error(getApiErrorMessage(error));
         });
     });
+  }
+
+  function formatLogHeading(log: ServiceLog): string {
+    const dateLabel = new Date(log.service_date).toLocaleDateString("uk-UA");
+
+    if (log.record_kind === "appointment" && log.service_time) {
+      return `${dateLabel} · ${log.service_time}`;
+    }
+
+    return dateLabel;
   }
 
   function handleDeleteLog() {
@@ -179,35 +264,65 @@ export function ServiceLogsClient() {
 
   const createForm = (
     <form className="grid gap-4" onSubmit={handleSubmit}>
-      {requestedProcedureIds.length > 0 ? (
+      {isAppointmentModal && requestedProcedureIds.length > 0 ? (
         <div className="rounded-[20px] border border-[rgba(197,27,27,0.22)] bg-[rgba(197,27,27,0.06)] p-4 text-sm leading-6 text-[var(--muted)]">
-          Ми вже підставили роботи з нагадування для цього авто. Перевірте дату, пробіг і збережіть запис сервісу.
+          Ми вже підставили роботи з нагадувань. Оберіть дату, вільний час і підтвердіть запис на СТО.
         </div>
       ) : null}
       {stationLabel ? (
         <p className="rounded-[20px] border border-[var(--line)] bg-black/5 px-4 py-3 text-sm leading-6 text-[var(--muted)]">
           СТО: <strong className="text-[var(--foreground)]">{stationLabel}</strong> (змінити можна у виборі СТО вище)
         </p>
+      ) : isAppointmentModal ? (
+        <p className="rounded-[20px] border border-[rgba(224,163,106,0.35)] bg-[rgba(224,163,106,0.08)] px-4 py-3 text-sm leading-6 text-[var(--muted)]">
+          Для запису на візит спочатку оберіть СТО у блоці вище — від цього залежать вільні години.
+        </p>
       ) : null}
-      {[
-        ["serviceDate", "Дата сервісу", "date"],
-        ["mileageKm", "Пробіг на момент сервісу", "number"],
-        ["notesUk", "Коментар до візиту", "text"]
-      ].map(([key, label, type]) => (
-        <label key={key} className="flex flex-col gap-2 text-sm text-[var(--muted)]">
-          {label}
-          <input
-            value={form[key as keyof typeof form]}
-            onChange={(event) => setForm((current) => ({ ...current, [key]: event.target.value }))}
-            className="field"
-            placeholder={label}
-            type={type}
-            required={key === "serviceDate" || key === "mileageKm"}
-          />
-        </label>
-      ))}
+      <label className="flex flex-col gap-2 text-sm text-[var(--muted)]">
+        {isAppointmentModal ? "Дата візиту" : "Дата сервісу"}
+        <input
+          value={form.serviceDate}
+          onChange={(event) => {
+            setForm((current) => ({ ...current, serviceDate: event.target.value }));
+            setServiceTime("");
+          }}
+          className="field"
+          type="date"
+          min={isAppointmentModal ? minServiceDate : undefined}
+          required
+        />
+      </label>
+      {isAppointmentModal ? (
+        <AppointmentTimeSlots
+          stationId={stationId}
+          serviceDate={form.serviceDate}
+          value={serviceTime}
+          onChange={setServiceTime}
+        />
+      ) : null}
+      <label className="flex flex-col gap-2 text-sm text-[var(--muted)]">
+        {isAppointmentModal ? "Орієнтовний пробіг на день візиту" : "Пробіг на момент сервісу"}
+        <input
+          value={form.mileageKm}
+          onChange={(event) => setForm((current) => ({ ...current, mileageKm: event.target.value }))}
+          className="field"
+          placeholder={isAppointmentModal ? "За потреби уточніть очікуваний пробіг" : "Пробіг на момент сервісу"}
+          type="number"
+          required={!isAppointmentModal}
+        />
+      </label>
+      <label className="flex flex-col gap-2 text-sm text-[var(--muted)]">
+        {isAppointmentModal ? "Коментар до запису" : "Коментар до візиту"}
+        <input
+          value={form.notesUk}
+          onChange={(event) => setForm((current) => ({ ...current, notesUk: event.target.value }))}
+          className="field"
+          placeholder={isAppointmentModal ? "Побажання, додаткові деталі для СТО" : "Коментар до візиту"}
+          type="text"
+        />
+      </label>
       <FancyMultiSelect
-        label="Виконані роботи"
+        label={isAppointmentModal ? "Планові роботи на візит" : "Виконані роботи"}
         values={selectedProcedures}
         onChange={setSelectedProcedures}
         options={procedures.map((procedure) => ({
@@ -218,17 +333,19 @@ export function ServiceLogsClient() {
         selectionTotalUah={sumUah(
           selectedProcedures.map((procedureId) => procedures.find((procedure) => procedure.id === procedureId)?.labor_price_uah)
         )}
-        helper="Можна обрати одразу кілька пунктів із поточного плану автомобіля."
-        placeholder="Оберіть виконані роботи"
+        helper={isAppointmentModal
+          ? "Оберіть роботи, які хочете виконати під час візиту. Можна взяти пункти з регламенту або майбутніх нагадувань."
+          : "Можна обрати одразу кілька пунктів із поточного плану автомобіля."}
+        placeholder={isAppointmentModal ? "Оберіть роботи для візиту" : "Оберіть виконані роботи"}
         emptyMessage="Для цього авто ще немає доступних робіт у плані обслуговування."
       />
       <div className="flex flex-wrap gap-3">
         <button disabled={isCreatePending} className="btn-primary">
-          Додати запис
+          {isAppointmentModal ? "Записатися на СТО" : "Додати запис"}
         </button>
         <button
           type="button"
-          onClick={() => setIsCreateModalOpen(false)}
+          onClick={closeCreateModal}
           className="btn-ghost"
         >
           Скасувати
@@ -272,7 +389,7 @@ export function ServiceLogsClient() {
             <div className="flex justify-start">
               <button
                 type="button"
-                onClick={() => setIsCreateModalOpen(true)}
+                onClick={openVisitCreateModal}
                 disabled={!selectedVehicleId}
                 className="btn-primary"
               >
@@ -293,7 +410,12 @@ export function ServiceLogsClient() {
               <article key={log.id} className="rounded-[22px] border border-[var(--line)] bg-white/4 p-5">
                 <div className="flex flex-wrap items-center justify-between gap-3">
                   <div>
-                    <h3 className="text-xl font-semibold text-[var(--foreground)]">{new Date(log.service_date).toLocaleDateString("uk-UA")}</h3>
+                    <div className="flex flex-wrap items-center gap-2">
+                      <h3 className="text-xl font-semibold text-[var(--foreground)]">{formatLogHeading(log)}</h3>
+                      {log.record_kind === "appointment" ? (
+                        <span className="status-wait">Запис на СТО</span>
+                      ) : null}
+                    </div>
                     <p className="mt-1 text-sm text-[var(--muted)]">{log.mileage_km.toLocaleString("uk-UA")} км · {log.service_station ?? "Без назви СТО"}</p>
                   </div>
                   <button
@@ -325,9 +447,11 @@ export function ServiceLogsClient() {
 
       <AppModal
         open={isCreateModalOpen}
-        onClose={() => setIsCreateModalOpen(false)}
-        title="Новий сервісний запис"
-        description="Зафіксуйте візит на СТО, відмітьте виконані роботи і збережіть його в історії автомобіля."
+        onClose={closeCreateModal}
+        title={isAppointmentModal ? "Запис на СТО" : "Новий сервісний запис"}
+        description={isAppointmentModal
+          ? "Оберіть дату, вільний час і роботи, які плануєте виконати. Запис зʼявиться в журналі як майбутній візит."
+          : "Зафіксуйте завершений візит на СТО, відмітьте виконані роботи і збережіть його в історії автомобіля."}
         maxWidthClassName="max-w-3xl"
       >
         {createForm}
